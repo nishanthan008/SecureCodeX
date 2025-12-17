@@ -108,7 +108,8 @@ class MultiLanguageASTDetector:
             # Not valid Python code, skip
             pass
         except Exception as e:
-            print(f"Python AST scan error in {file_path}: {e}")
+            # print(f"Python AST scan error in {file_path}: {e}")
+            pass
         
         return findings
     
@@ -313,7 +314,8 @@ class MultiLanguageASTDetector:
             tree = self.esprima.parseScript(content, {'loc': True})
             findings.extend(self._walk_js_ast(tree, file_path))
         except Exception as e:
-            print(f"JavaScript AST scan error in {file_path}: {e}")
+            # print(f"JavaScript AST scan error in {file_path}: {e}")
+            pass
         
         return findings
     
@@ -388,6 +390,7 @@ class MultiLanguageASTDetector:
                         })
         
         except Exception as e:
-            print(f"Java AST scan error in {file_path}: {e}")
+            # print(f"Java AST scan error in {file_path}: {e}")
+            pass
         
         return findings
