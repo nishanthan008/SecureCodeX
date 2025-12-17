@@ -4,38 +4,23 @@ echo   SecureCodeX GitHub Uploader
 echo ========================================================
 echo.
 
-:: Check if git is available
-where git >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Git is not installed or not in your PATH.
-    echo.
-    echo Please install Git for Windows first:
-    echo https://git-scm.com/download/win
-    echo.
-    echo After installing, restart this script.
+set GIT_PATH="C:\Program Files\Git\cmd\git.exe"
+
+if not exist %GIT_PATH% (
+    echo [ERROR] Git executable not found at %GIT_PATH%
+    echo Please verify your Git installation.
     pause
     exit /b 1
 )
 
-echo [INFO] Git found. initializing repository...
-git init
+echo [INFO] Git found at %GIT_PATH%
 
-echo [INFO] Adding files...
-git add .
-
-echo [INFO] Committing files...
-git commit -m "Initial release of SecureCodeX CLI tool"
-
-echo [INFO] Renaming branch to main...
-git branch -M main
-
-echo [INFO] Adding remote origin...
-git remote remove origin 2>nul
-git remote add origin https://github.com/nishanthan008/SecureCodeX.git
-
-echo [INFO] Pushing to GitHub...
+echo [INFO] Pushing to GitHub (https://github.com/nishanthan008/SecureCodeX.git)...
 echo.
-git push -u origin main
+echo [NOTE] You may be asked to sign in to GitHub in the popup window.
+echo.
+
+%GIT_PATH% push -u origin main
 
 echo.
 if %ERRORLEVEL% equ 0 (

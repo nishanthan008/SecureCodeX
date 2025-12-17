@@ -4,6 +4,12 @@ from ..models import Severity
 
 class PatternDetector:
     def __init__(self):
+        self.rules = []
+        # Initialize default rules
+        self._init_default_rules()
+        self._add_extended_rules()
+
+    def _init_default_rules(self):
         self.rules = [
             {
                 "id": "HARDCODED_AWS_KEY",
@@ -101,11 +107,22 @@ class PatternDetector:
         findings = []
         lines = content.split('\n')
         
+        # Skip if line count is too massive (e.g. minified large files) to save time, 
+        # but requested "no threshold" so primarily skip very long lines
+        
         for rule in self.rules:
             try:
                 regex = re.compile(rule['pattern'])
                 for i, line in enumerate(lines):
+                    # Skip very long lines (likely minified code or data)
+                    if len(line) > 1000:
+                        continue
+                        
                     if regex.search(line):
+                        # False positive check
+                        if self._is_false_positive(line, rule, file_path):
+                            continue
+                            
                         findings.append({
                             "rule_id": rule['id'],
                             "name": rule['name'],
@@ -113,10 +130,75 @@ class PatternDetector:
                             "severity": rule['severity'],
                             "file_path": file_path,
                             "line_number": i + 1,
-                            "code_snippet": line.strip()[:200], # Limit snippet length
+                            "code_snippet": line.strip()[:200],
                             "remediation": rule['remediation']
                         })
             except re.error:
                 print(f"Invalid regex for rule {rule['id']}")
                 
         return findings
+
+    def _is_false_positive(self, line: str, rule: dict, file_path: str) -> bool:
+        """Check for common false positives"""
+        stripped = line.strip()
+        
+        # Ignore comments
+        if stripped.startswith(('#', '//', '*', '--')):
+            return True
+            
+        # For IP addresses, ignore version numbers or semantic versioning
+        if rule['id'] == 'HARDCODED_IP':
+            # Ignore 0.0.0.0 or 127.0.0.1 often used in config/tests
+            if '0.0.0.0' in line or '127.0.0.1' in line:
+                return True
+            # Ignore version-like strings (e.g. v1.2.3.4)
+            if re.search(r'v\d+\.\d+\.\d+', line, re.IGNORECASE):
+                return True
+                
+        # For generic password, ignore common test/placeholder vars if "test" or "example" in line
+        if rule['id'] == 'GENERIC_PASSWORD':
+            if any(x in line.lower() for x in ['test', 'example', 'mock', 'fake', 'dummy']):
+                return True
+
+        return False
+
+    def _add_extended_rules(self):
+        """Add rules for extended languages"""
+        self.rules.extend([
+            # PHP
+            {
+                "id": "PHP_DANGEROUS_FUNC",
+                "name": "Dangerous PHP Function",
+                "pattern": r"(?i)(exec|passthru|shell_exec|system|proc_open|popen)\s*\(",
+                "description": "Use of dangerous PHP execution function.",
+                "severity": Severity.CRITICAL,
+                "remediation": "Avoid system execution functions. Use safer alternatives."
+            },
+            # C/C++
+            {
+                "id": "CPP_NON_SECURE_FUNC",
+                "name": "Insecure C/C++ Function",
+                "pattern": r"\b(strcpy|strcat|sprintf|gets)\b\s*\(",
+                "description": "Use of insecure string function leading to buffer overflows.",
+                "severity": Severity.HIGH,
+                "remediation": "Use safe alternatives like strncpy, strncat, snprintf."
+            },
+            # Go
+            {
+                "id": "GO_SQL_INJECTION",
+                "name": "Potential Go SQL Injection",
+                "pattern": r"fmt\.Sprintf\s*\(\s*\"(.*SELECT|.*INSERT|.*UPDATE|.*DELETE).*%s",
+                "description": "Constructing SQL queries with fmt.Sprintf can lead to injection.",
+                "severity": Severity.HIGH,
+                "remediation": "Use parameterized queries ($1, $2, etc)."
+            },
+            # Ruby
+            {
+                "id": "RUBY_CMD_INJECTION",
+                "name": "Ruby Command Injection",
+                "pattern": r"(?<!\w)(eval|system|exec|`)\b",
+                "description": "Dynamic code execution in Ruby.",
+                "severity": Severity.HIGH,
+                "remediation": "Validate input and avoid dynamic execution."
+            }
+        ])

@@ -1329,3 +1329,63 @@ class AdvancedPatternDetector:
             }
         ])
 
+    def scan_content(self, content: str, file_path: str) -> List[Dict]:
+        """Scan content using loaded rules"""
+        findings = []
+        lines = content.split('\n')
+        
+        for rule in self.rules:
+            # Check if rule applies to this file's language
+            if 'languages' in rule and rule['languages'] != ["all"]:
+                # Simple extension check
+                ext = file_path.split('.')[-1].lower()
+                lang_map = {
+                    'py': 'python', 'js': 'javascript', 'ts': 'typescript',
+                    'java': 'java', 'c': 'c', 'cpp': 'cpp', 'cc': 'cpp',
+                    'h': 'cpp', 'hpp': 'cpp', 'cs': 'csharp', 'php': 'php',
+                    'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'sh': 'shell'
+                }
+                file_lang = lang_map.get(ext)
+                if file_lang and file_lang not in rule['languages']:
+                    continue
+
+            try:
+                regex = re.compile(rule['pattern'])
+                for i, line in enumerate(lines):
+                    # Skip very long lines
+                    if len(line) > 1000:
+                        continue
+                        
+                    if regex.search(line):
+                        # False positive check
+                        if self._is_false_positive(line, rule):
+                            continue
+                            
+                        findings.append({
+                            "rule_id": rule['id'],
+                            "name": rule['name'],
+                            "description": rule['description'],
+                            "severity": rule['severity'],
+                            "file_path": file_path,
+                            "line_number": i + 1,
+                            "code_snippet": line.strip()[:200],
+                            "remediation": rule['remediation']
+                        })
+            except re.error:
+                # print(f"Invalid regex for rule {rule['id']}")
+                pass
+                
+        return findings
+
+    def _is_false_positive(self, line: str, rule: dict) -> bool:
+        """Check for common false positives"""
+        stripped = line.strip()
+        
+        # Ignore comments
+        if stripped.startswith(('#', '//', '*', '--', '<!--')):
+            return True
+            
+        # Ignore test files logic could be here, but usually controlled by scanner
+        
+        return False
+

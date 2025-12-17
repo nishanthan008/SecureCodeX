@@ -55,13 +55,15 @@ class CLIScanner:
             
             if self.verbose:
                 print(f"\n[FILES] Found {total_file_count} files to scan")
-            
             # Update scan with file count
             scan.total_files = total_file_count
             self.db.commit()
             
             # Process files with progress bar
-            with tqdm(total=total_file_count, desc="Scanning files", unit="file") as pbar:
+            # Custom format: Percentage, Bar, Counts, Elapsed/Remaining
+            bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+            
+            with tqdm(total=total_file_count, desc="Scanning", unit="file", bar_format=bar_format) as pbar:
                 for file_path in files_to_scan:
                     findings = self._scan_single_file(file_path)
                     findings_batch.extend(findings)
@@ -72,10 +74,6 @@ class CLIScanner:
                         languages_set.add(ext)
                     
                     pbar.update(1)
-                    pbar.set_postfix({
-                        'findings': len(findings_batch),
-                        'errors': self.stats['errors']
-                    })
             
             # Batch insert findings
             if self.verbose:
