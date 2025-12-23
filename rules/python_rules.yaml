@@ -1,0 +1,36 @@
+
+rules:
+  # 1. Pattern Rule: Dangerous API Usage
+  - id: dangerous-os-system
+    severity: HIGH
+    languages: [python]
+    pattern: os.system(...)
+    message: "Using os.system() is dangerous and can lead to command injection."
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+
+  # 2. AST Rule: Structural Misuse (Empty Except)
+  - id: empty-except-block
+    severity: LOW
+    languages: [python]
+    pattern: |
+      try:
+        ...
+      except:
+        pass
+    message: "Empty except: pass block detected. This can hide critical errors."
+    metadata:
+      cwe: CWE-391
+
+  # 3. Taint Rule: Source -> Sink (SQL Injection)
+  - id: python-sqli-taint
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    source: $REQ.params.get(...)
+    sink: db.execute(...)
+    message: "User input from $REQ reaches SQL execution sink without sanitization."
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
