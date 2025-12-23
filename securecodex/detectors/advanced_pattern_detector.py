@@ -26,6 +26,7 @@ class AdvancedPatternDetector:
         self._initialize_cloud_security_rules()
         self._initialize_supply_chain_rules()
         self._initialize_additional_injection_rules()
+        self._initialize_user_requested_rules()
 
     
     def _initialize_input_data_handling_rules(self):
@@ -1793,4 +1794,154 @@ class AdvancedPatternDetector:
                     return True
         
         return False
+
+    def _initialize_user_requested_rules(self):
+        """User-requested specific vulnerability rules"""
+        self.rules.extend([
+            # --- C# Rules ---
+            {
+                "id": "CSHARP_BINARY_FORMATTER",
+                "name": "Insecure Deserialization (BinaryFormatter)",
+                "pattern": r"(?i)new\s+BinaryFormatter",
+                "description": "Usage of BinaryFormatter (insecure deserialization risk).",
+                "severity": Severity.CRITICAL,
+                "remediation": "Use secure serializers like JsonSerializer or XmlSerializer.",
+                "languages": ["csharp"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-502",
+                "asvs": "V5.5.3",
+                "mitre": "T1203",
+                "nist": "SI-10"
+            },
+            {
+                "id": "CSHARP_PROCESS_START",
+                "name": "Command Injection (Process.Start)",
+                "pattern": r"(?i)Process\.Start\s*\(\s*[^)]+[\+\$]",
+                "description": "Process.Start with concatenated input (Command Injection risk).",
+                "severity": Severity.HIGH,
+                "remediation": "Use ProcessStartInfo with ArgumentList to safely pass arguments.",
+                "languages": ["csharp"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-78",
+                "asvs": "V5.3.8",
+                "mitre": "T1059",
+                "nist": "SI-10"
+            },
+            {
+                "id": "CSHARP_UNSAFE_CODE",
+                "name": "Unsafe Code Block",
+                "pattern": r"(?i)\bunsafe\b",
+                "description": "Usage of unsafe keyword (memory safety risk).",
+                "severity": Severity.MEDIUM,
+                "remediation": "Avoid unsafe code unless absolutely necessary; ensure bounds checking.",
+                "languages": ["csharp"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-119",
+                "asvs": "V5.5.1",
+                "mitre": "T1203",
+                "nist": "SI-10"
+            },
+            {
+                "id": "CSHARP_ANTIFORGERY_MISSING",
+                "name": "Missing Anti-Forgery Token",
+                "pattern": r"(?i)\[HttpPost\](?!.*?ValidateAntiForgeryToken)",
+                "description": "POST action without ValidateAntiForgeryToken attribute.",
+                "severity": Severity.HIGH,
+                "remediation": "Add [ValidateAntiForgeryToken] to POST actions.",
+                "languages": ["csharp"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-352",
+                "asvs": "V4.2.2",
+                "mitre": "T1566",
+                "nist": "SI-10"
+            },
+
+            # --- Java Rules ---
+            {
+                "id": "JAVA_PRIV_ESCALATION",
+                "name": "Privilege Escalation (User Name)",
+                "pattern": r"(?i)System\.setProperty.*?user\.name.*?root",
+                "description": "Attempt to set user.name to root (Privilege Escalation risk).",
+                "severity": Severity.CRITICAL,
+                "remediation": "Do not manipulate system user properties.",
+                "languages": ["java"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-269",
+                "asvs": "V4.1.1",
+                "mitre": "T1068",
+                "nist": "AC-6"
+            },
+            {
+                "id": "JAVA_INFINITE_LOOP",
+                "name": "Potential Infinite Loop (DoS)",
+                "pattern": r"while\s*\(\s*true\s*\)",
+                "description": "Infinite loop detected (potential Denial of Service).",
+                "severity": Severity.LOW,
+                "remediation": "Ensure loop executes with a break condition or defined logic.",
+                "languages": ["java", "csharp", "cpp", "c", "javascript", "typescript", "go"],
+                "owasp": "A04:2021-Insecure Design",
+                "cwe": "CWE-835",
+                "asvs": "V1.10.1",
+                "mitre": "T1499",
+                "nist": "SI-10"
+            },
+            {
+                "id": "JAVA_RSA_NO_PADDING",
+                "name": "Weak RSA Padding",
+                "pattern": r"(?i)Cipher\.getInstance.*?RSA/.*/NoPadding",
+                "description": "RSA usage without padding is insecure.",
+                "severity": Severity.HIGH,
+                "remediation": "Use RSA/ECB/OAEPWithSHA-256AndMGF1Padding or similar strong padding.",
+                "languages": ["java"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-780",
+                "asvs": "V6.2.5",
+                "mitre": "T1027",
+                "nist": "SC-13"
+            },
+
+            # --- JS/TS Rules ---
+            {
+                "id": "JS_LOCAL_STORAGE_SENSITIVE",
+                "name": "Sensitive Data in LocalStorage",
+                "pattern": r"(?i)(localStorage|sessionStorage)\.setItem\s*\(.*?(password|token|auth|key|secret)",
+                "description": "Storing sensitive data in localStorage/sessionStorage is insecure.",
+                "severity": Severity.HIGH,
+                "remediation": "Store sensitive tokens in HttpOnly cookies.",
+                "languages": ["javascript", "typescript"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-922",
+                "asvs": "V1.6.4",
+                "mitre": "T1552",
+                "nist": "SC-28"
+            },
+            {
+                "id": "JS_DANGEROUS_HTML",
+                "name": "Dangerous HTML Injection",
+                "pattern": r"(?i)dangerouslySetInnerHTML",
+                "description": "Direct HTML insertion (XSS risk).",
+                "severity": Severity.HIGH,
+                "remediation": "sanitize HTML before rendering or use safer alternatives.",
+                "languages": ["javascript", "typescript"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-79",
+                "asvs": "V5.3.3",
+                "mitre": "T1190",
+                "nist": "SI-10"
+            },
+             {
+                "id": "JS_DOCUMENT_WRITE",
+                "name": "Document Write Usage",
+                "pattern": r"(?i)document\.write\(",
+                "description": "Use of document.write can lead to XSS and performance issues.",
+                "severity": Severity.MEDIUM,
+                "remediation": "Use DOM manipulation methods (e.g., textContent, innerText) instead.",
+                "languages": ["javascript", "typescript"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-79",
+                "asvs": "V5.3.3",
+                "mitre": "T1190",
+                "nist": "SI-10"
+            }
+        ])
 
