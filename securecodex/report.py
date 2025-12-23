@@ -160,27 +160,45 @@ class PDFReportGenerator:
                 if sev_findings:
                     story.append(Paragraph(f"{severity} Severity ({len(sev_findings)} findings)", styles['Heading3']))
                     
-                    findings_data = [["Finding", "File Path", "Line", "Code Snippet"]]
+                    # New Columns: Finding, File Path, Line, Remediation, Standards
+                    findings_data = [["Finding / Remediation", "File / Line", "Code Snippet", "Standards (OWASP/CWE/ASVS/MITRE/NIST)"]]
                     for finding in sev_findings[:50]:  # Limit to 50 per severity to avoid huge PDFs
                         # Make file path relative if possible
                         file_display = finding.file_path
                         if scan.scan_path and finding.file_path.startswith(scan.scan_path):
                             file_display = os.path.relpath(finding.file_path, scan.scan_path)
                         
-                        snippet = finding.code_snippet[:60] + "..." if finding.code_snippet and len(finding.code_snippet) > 60 else (finding.code_snippet or "N/A")
-                        # Escape HTML to prevent PDF parsing errors
+                        snippet = finding.code_snippet[:100] + "..." if finding.code_snippet and len(finding.code_snippet) > 100 else (finding.code_snippet or "N/A")
+                        
+                        # Format Standards
+                        standards = []
+                        if finding.owasp_id: standards.append(f"OWASP: {finding.owasp_id}")
+                        if finding.cwe_id: standards.append(f"{finding.cwe_id}")
+                        if finding.asvs_id: standards.append(f"ASVS: {finding.asvs_id}")
+                        if finding.mitre_id: standards.append(f"MITRE: {finding.mitre_id}")
+                        if finding.nist_id: standards.append(f"NIST: {finding.nist_id}")
+                        
+                        standards_text = "\n".join(standards) if standards else "N/A"
+
+                        # Escape HTML
                         snippet = html.escape(snippet)
                         file_display = html.escape(file_display)
                         finding_name = html.escape(finding.name)
+                        remediation = html.escape(finding.remediation or "Refer to standard guidelines.")
+                        
+                        # Combine Name and Remediation for first column
+                        col1_text = f"<b>{finding_name}</b><br/><br/><i>Possible Fix:</i> {remediation}"
+                        col2_text = f"{file_display}<br/>Line: {finding.line_number}"
                         
                         findings_data.append([
-                            Paragraph(finding_name, styles['Normal']),
-                            Paragraph(file_display, styles['Normal']),
-                            str(finding.line_number),
-                            Paragraph(snippet, styles['Normal'])
+                            Paragraph(col1_text, styles['Normal']),
+                            Paragraph(col2_text, styles['Normal']),
+                            Paragraph(snippet, styles['Normal']),
+                            Paragraph(standards_text, styles['Normal'])
                         ])
                     
-                    findings_table = Table(findings_data, colWidths=[1.5*inch, 2.5*inch, 0.5*inch, 3.0*inch])
+                    # Adjusted Column Widths
+                    findings_table = Table(findings_data, colWidths=[2.5*inch, 2.0*inch, 1.5*inch, 1.5*inch])
                     findings_table.setStyle(TableStyle([
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -200,7 +218,60 @@ class PDFReportGenerator:
                         story.append(Spacer(1, 0.2*inch))
         else:
             story.append(Paragraph("No vulnerabilities found. ✓", styles['Normal']))
+            
+        story.append(PageBreak())
         
+        # SBOM Section
+        story.append(Paragraph("Software Bill of Materials (SBOM)", heading_style))
+        story.append(Paragraph("The following third-party components were identified:", styles['Normal']))
+        story.append(Spacer(1, 0.1*inch))
+        
+        # We need to re-scan for dependencies to generate SBOM (or store it in DB).
+        # For this implementation, we will perform a quick re-scan or assume it's passed.
+        # Ideally, SBOM should be stored in the DB.
+        # Since I didn't update the DB model for SBOM storage yet, I will use a placeholder or
+        # trigger the dependency scanner if I can access the path. 
+        # But report generator typically just reads from DB.
+        
+        # Check if we can scan on the fly for the report (if scan_path exists)
+        if scan.scan_path and os.path.exists(scan.scan_path):
+            from .detectors.dependency import DependencyDetector
+            dep_detector = DependencyDetector()
+            
+            # Find dependency files
+            dep_files = []
+            for root, _, files in os.walk(scan.scan_path):
+                for file in files:
+                    if file.lower() in ["requirements.txt", "package.json", "pom.xml", "composer.json"]:
+                        dep_files.append(os.path.join(root, file))
+            
+            sbom = dep_detector.generate_sbom(dep_files)
+            
+            sbom_data = [["Component", "Version", "Type", "PURL"]]
+            for component in sbom.get("components", []):
+                sbom_data.append([
+                    component.get("name", "N/A"),
+                    component.get("version", "N/A"),
+                    component.get("type", "library"),
+                    Paragraph(component.get("purl", "N/A"), styles['Normal'])
+                ])
+            
+            if len(sbom_data) > 1:
+                sbom_table = Table(sbom_data, colWidths=[2.0*inch, 1.0*inch, 1.0*inch, 3.5*inch])
+                sbom_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#059669')), # Green for SBOM
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ]))
+                story.append(sbom_table)
+            else:
+                story.append(Paragraph("No dependencies found.", styles['Normal']))
+        else:
+             story.append(Paragraph("Scan path not available for SBOM generation.", styles['Normal']))
+
         # Build PDF
         doc.build(story)
         

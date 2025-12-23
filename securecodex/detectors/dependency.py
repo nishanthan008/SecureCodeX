@@ -360,3 +360,117 @@ class DependencyDetector:
             print(f"Error reading {file_path}: {e}")
         
         return findings
+
+    def generate_sbom(self, file_paths: List[str]) -> Dict:
+        """
+        Generates a Software Bill of Materials (SBOM) in CycloneDX-like JSON format.
+        
+        Args:
+            file_paths: List of dependency file paths to scan.
+            
+        Returns:
+            Dictionary representing the SBOM.
+        """
+        sbom = {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.4",
+            "version": 1,
+            "components": []
+        }
+        
+        for file_path in file_paths:
+            filename = os.path.basename(file_path).lower()
+            components = []
+            
+            if filename.endswith("requirements.txt"):
+                components = self._parse_requirements_txt(file_path)
+            elif filename == "package.json":
+                components = self._parse_package_json(file_path)
+            elif filename == "pom.xml":
+                components = self._parse_pom_xml(file_path)
+            elif filename == "composer.json":
+                components = self._parse_composer_json(file_path)
+            # Add other parsers as needed
+            
+            sbom["components"].extend(components)
+            
+        return sbom
+
+    def _parse_requirements_txt(self, file_path: str) -> List[Dict]:
+        """Parse requirements.txt for SBOM"""
+        components = []
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    match = re.match(r'([a-zA-Z0-9_-]+)\s*([=<>!]+)\s*([0-9.]+)', line)
+                    if match:
+                        components.append({
+                            "type": "library",
+                            "name": match.group(1),
+                            "version": match.group(3),
+                            "purl": f"pkg:pypi/{match.group(1)}@{match.group(3)}"
+                        })
+        except Exception:
+            pass
+        return components
+
+    def _parse_package_json(self, file_path: str) -> List[Dict]:
+        """Parse package.json for SBOM"""
+        components = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                dependencies = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
+                for name, version in dependencies.items():
+                    clean_version = re.sub(r'^[\^~>=<]+', '', version)
+                    components.append({
+                        "type": "library",
+                        "name": name,
+                        "version": clean_version,
+                        "purl": f"pkg:npm/{name}@{clean_version}"
+                    })
+        except Exception:
+            pass
+        return components
+
+    def _parse_pom_xml(self, file_path: str) -> List[Dict]:
+        """Parse pom.xml for SBOM (Simplified)"""
+        components = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Basic regex for demo purposes (proper XML parsing recommended for prod)
+                matches = re.findall(r'<dependency>.*?<groupId>(.*?)</groupId>.*?<artifactId>(.*?)</artifactId>.*?<version>(.*?)</version>.*?</dependency>', content, re.DOTALL)
+                for group, artifact, version in matches:
+                    components.append({
+                        "type": "library",
+                        "group": group.strip(),
+                        "name": artifact.strip(),
+                        "version": version.strip(),
+                        "purl": f"pkg:maven/{group.strip()}/{artifact.strip()}@{version.strip()}"
+                    })
+        except Exception:
+            pass
+        return components
+
+    def _parse_composer_json(self, file_path: str) -> List[Dict]:
+        """Parse composer.json for SBOM"""
+        components = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                dependencies = {**data.get('require', {}), **data.get('require-dev', {})}
+                for name, version in dependencies.items():
+                    clean_version = re.sub(r'^[\^~>=<]+', '', version)
+                    components.append({
+                        "type": "library",
+                        "name": name,
+                        "version": clean_version,
+                        "purl": f"pkg:composer/{name}@{clean_version}"
+                    })
+        except Exception:
+            pass
+        return components

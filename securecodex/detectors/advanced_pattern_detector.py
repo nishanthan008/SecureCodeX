@@ -18,6 +18,7 @@ class AdvancedPatternDetector:
         self._initialize_data_exposure_rules()
         self._initialize_code_quality_rules()
         self._initialize_web_repo_rules()
+        self._initialize_advanced_web_rules()
         self._initialize_ssrf_rules()
         self._initialize_xxe_rules()
         self._initialize_file_inclusion_rules()
@@ -38,7 +39,12 @@ class AdvancedPatternDetector:
                 "description": "SQL query constructed using string concatenation with user input.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use parameterized queries or prepared statements.",
-                "languages": ["python", "java", "javascript", "php", "csharp", "go"]
+                "languages": ["python", "java", "javascript", "php", "csharp", "go"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-89",
+                "asvs": "V5.3.4",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             {
                 "id": "SQL_INJECTION_FORMAT",
@@ -47,7 +53,12 @@ class AdvancedPatternDetector:
                 "description": "SQL query using string formatting with potential user input.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use parameterized queries instead of string formatting.",
-                "languages": ["python", "java", "javascript", "php", "csharp"]
+                "languages": ["python", "java", "javascript", "php", "csharp"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-89",
+                "asvs": "V5.3.5",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             {
                 "id": "SQL_INJECTION_FSTRING",
@@ -56,7 +67,12 @@ class AdvancedPatternDetector:
                 "description": "SQL query using f-strings with variables (potential injection).",
                 "severity": Severity.HIGH,
                 "remediation": "Use parameterized queries, not f-strings for SQL.",
-                "languages": ["python"]
+                "languages": ["python"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-89",
+                "asvs": "V5.3.5",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             
             # NoSQL Injection
@@ -67,7 +83,12 @@ class AdvancedPatternDetector:
                 "description": "MongoDB query using $where operator with potential user input.",
                 "severity": Severity.HIGH,
                 "remediation": "Avoid $where operator, use query operators instead.",
-                "languages": ["javascript", "typescript", "python"]
+                "languages": ["javascript", "typescript", "python"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-943",
+                "asvs": "V5.3.4",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             {
                 "id": "NOSQL_INJECTION_EVAL",
@@ -76,7 +97,12 @@ class AdvancedPatternDetector:
                 "description": "NoSQL query using eval in $where clause.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Never use eval in database queries.",
-                "languages": ["javascript", "typescript"]
+                "languages": ["javascript", "typescript"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-95",
+                "asvs": "V5.2.4",
+                "mitre": "T1059",
+                "nist": "SI-10"
             },
             
             # Command Injection
@@ -87,7 +113,12 @@ class AdvancedPatternDetector:
                 "description": "System command execution with concatenated user input.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use subprocess with argument lists, not shell=True.",
-                "languages": ["python", "php", "ruby", "perl"]
+                "languages": ["python", "php", "ruby", "perl"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-78",
+                "asvs": "V5.3.8",
+                "mitre": "T1059",
+                "nist": "SI-10"
             },
             {
                 "id": "COMMAND_INJECTION_BACKTICKS",
@@ -96,7 +127,12 @@ class AdvancedPatternDetector:
                 "description": "Shell command execution using backticks with variables.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use safe subprocess methods with argument arrays.",
-                "languages": ["php", "ruby", "perl", "shell"]
+                "languages": ["php", "ruby", "perl", "shell"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-78",
+                "asvs": "V5.3.8",
+                "mitre": "T1059",
+                "nist": "SI-10"
             },
             {
                 "id": "COMMAND_INJECTION_CHILD_PROCESS",
@@ -105,7 +141,12 @@ class AdvancedPatternDetector:
                 "description": "Node.js child_process with template literals containing variables.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use execFile or spawn with argument arrays.",
-                "languages": ["javascript", "typescript"]
+                "languages": ["javascript", "typescript"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-78",
+                "asvs": "V5.3.8",
+                "mitre": "T1059",
+                "nist": "SI-10"
             },
             
             # LDAP Injection
@@ -116,7 +157,12 @@ class AdvancedPatternDetector:
                 "description": "LDAP query constructed with string concatenation.",
                 "severity": Severity.HIGH,
                 "remediation": "Use parameterized LDAP queries and input validation.",
-                "languages": ["java", "python", "csharp", "php"]
+                "languages": ["java", "python", "csharp", "php"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-90",
+                "asvs": "V5.3.7",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             
             # Path Traversal
@@ -127,7 +173,12 @@ class AdvancedPatternDetector:
                 "description": "File operation with path traversal sequence (..).",
                 "severity": Severity.HIGH,
                 "remediation": "Validate and sanitize file paths, use allowlists.",
-                "languages": ["python", "javascript", "php", "ruby", "java"]
+                "languages": ["python", "javascript", "php", "ruby", "java"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-22",
+                "asvs": "V12.1.1",
+                "mitre": "T1006",
+                "nist": "SI-10"
             },
             {
                 "id": "PATH_TRAVERSAL_ABSOLUTE",
@@ -136,7 +187,12 @@ class AdvancedPatternDetector:
                 "description": "File operation with concatenated path (potential traversal).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Use path.join() or os.path.join() with validation.",
-                "languages": ["python", "javascript", "php", "ruby"]
+                "languages": ["python", "javascript", "php", "ruby"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-22",
+                "asvs": "V12.1.2",
+                "mitre": "T1006",
+                "nist": "SI-10"
             },
             
             # Unvalidated Redirects
@@ -147,7 +203,12 @@ class AdvancedPatternDetector:
                 "description": "Redirect using unvalidated user input.",
                 "severity": Severity.MEDIUM,
                 "remediation": "Validate redirect URLs against allowlist.",
-                "languages": ["python", "javascript", "php", "ruby", "java"]
+                "languages": ["python", "javascript", "php", "ruby", "java"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-601",
+                "asvs": "V5.1.5",
+                "mitre": "T1204",
+                "nist": "SI-10"
             },
             
             # XSS Vulnerabilities
@@ -158,7 +219,12 @@ class AdvancedPatternDetector:
                 "description": "Direct output of user input to DOM without sanitization.",
                 "severity": Severity.HIGH,
                 "remediation": "Sanitize user input, use textContent instead of innerHTML.",
-                "languages": ["javascript", "typescript", "php"]
+                "languages": ["javascript", "typescript", "php"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-79",
+                "asvs": "V5.3.3",
+                "mitre": "T1189",
+                "nist": "SI-10"
             },
             {
                 "id": "XSS_DOM_BASED",
@@ -167,7 +233,12 @@ class AdvancedPatternDetector:
                 "description": "DOM-based XSS using untrusted sources.",
                 "severity": Severity.HIGH,
                 "remediation": "Validate and encode data from DOM sources.",
-                "languages": ["javascript", "typescript"]
+                "languages": ["javascript", "typescript"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-79",
+                "asvs": "V5.3.2",
+                "mitre": "T1189",
+                "nist": "SI-10"
             },
             {
                 "id": "XSS_TEMPLATE_INJECTION",
@@ -176,7 +247,12 @@ class AdvancedPatternDetector:
                 "description": "Server-side template injection vulnerability.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Never use user input in template rendering.",
-                "languages": ["python", "javascript", "ruby", "java"]
+                "languages": ["python", "javascript", "ruby", "java"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-1336",
+                "asvs": "V5.2.5",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             
             # Deserialization Flaws
@@ -187,7 +263,12 @@ class AdvancedPatternDetector:
                 "description": "Unsafe deserialization using pickle (allows code execution).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use JSON or validate pickle sources. Consider safer alternatives.",
-                "languages": ["python"]
+                "languages": ["python"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-502",
+                "asvs": "V5.5.3",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             {
                 "id": "UNSAFE_DESERIALIZATION_YAML",
@@ -196,7 +277,12 @@ class AdvancedPatternDetector:
                 "description": "Unsafe YAML deserialization (allows code execution).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use yaml.safe_load() instead of yaml.load().",
-                "languages": ["python", "ruby"]
+                "languages": ["python", "ruby"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-502",
+                "asvs": "V5.5.3",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             {
                 "id": "UNSAFE_DESERIALIZATION_PHP",
@@ -205,7 +291,12 @@ class AdvancedPatternDetector:
                 "description": "PHP unserialize on untrusted data (object injection).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use JSON instead of serialize/unserialize.",
-                "languages": ["php"]
+                "languages": ["php"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-502",
+                "asvs": "V5.5.1",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             {
                 "id": "UNSAFE_DESERIALIZATION_JAVA",
@@ -214,7 +305,12 @@ class AdvancedPatternDetector:
                 "description": "Java deserialization vulnerability.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Validate serialized data, use allowlists for classes.",
-                "languages": ["java"]
+                "languages": ["java"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-502",
+                "asvs": "V5.5.3",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             
             # Buffer Overflow
@@ -234,7 +330,12 @@ class AdvancedPatternDetector:
                 "description": "Use of unsafe sprintf function (buffer overflow risk).",
                 "severity": Severity.HIGH,
                 "remediation": "Use snprintf with buffer size limits.",
-                "languages": ["c", "cpp"]
+                "languages": ["c", "cpp"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-120",
+                "asvs": "V5.2.2",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             {
                 "id": "BUFFER_OVERFLOW_GETS",
@@ -243,7 +344,12 @@ class AdvancedPatternDetector:
                 "description": "Use of extremely unsafe gets function.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use fgets with buffer size limits.",
-                "languages": ["c", "cpp"]
+                "languages": ["c", "cpp"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-120",
+                "asvs": "V5.2.2",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             
             # Integer Overflow
@@ -254,7 +360,13 @@ class AdvancedPatternDetector:
                 "description": "Memory allocation with arithmetic (integer overflow risk).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Check for integer overflow before allocation.",
-                "languages": ["c", "cpp", "java"]
+                "remediation": "Check for integer overflow before allocation.",
+                "languages": ["c", "cpp", "java"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-190",
+                "asvs": "V5.1.4",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             
             # Unvalidated Input
@@ -280,7 +392,12 @@ class AdvancedPatternDetector:
                 "description": "Hardcoded password in source code.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use environment variables or secrets management.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-798",
+                "asvs": "V2.10.4",
+                "mitre": "T1552",
+                "nist": "IA-5"
             },
             {
                 "id": "HARDCODED_API_KEY",
@@ -289,7 +406,12 @@ class AdvancedPatternDetector:
                 "description": "Hardcoded API key in source code.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use environment variables or secrets vault.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-798",
+                "asvs": "V2.10.4",
+                "mitre": "T1552",
+                "nist": "IA-5"
             },
             {
                 "id": "HARDCODED_TOKEN",
@@ -298,7 +420,12 @@ class AdvancedPatternDetector:
                 "description": "Hardcoded authentication token.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Generate tokens dynamically, never hardcode.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-798",
+                "asvs": "V2.10.4",
+                "mitre": "T1552",
+                "nist": "IA-5"
             },
             {
                 "id": "HARDCODED_SECRET",
@@ -307,7 +434,12 @@ class AdvancedPatternDetector:
                 "description": "Hardcoded secret or encryption key.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use secure key management systems.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-321",
+                "asvs": "V2.10.4",
+                "mitre": "T1552",
+                "nist": "IA-5"
             },
             
             # Weak Password Enforcement
@@ -318,7 +450,12 @@ class AdvancedPatternDetector:
                 "description": "Weak password length requirement (less than 6 characters).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Enforce minimum 8-12 character passwords with complexity.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-521",
+                "asvs": "V2.1.1",
+                "mitre": "T1110",
+                "nist": "IA-5"
             },
             {
                 "id": "NO_PASSWORD_COMPLEXITY",
@@ -327,7 +464,12 @@ class AdvancedPatternDetector:
                 "description": "Password validation only checks length, not complexity.",
                 "severity": Severity.LOW,
                 "remediation": "Check for uppercase, lowercase, numbers, and special chars.",
-                "languages": ["python", "javascript", "ruby"]
+                "languages": ["python", "javascript", "ruby"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-521",
+                "asvs": "V2.1.2",
+                "mitre": "T1110",
+                "nist": "IA-5"
             },
             
             # Session Handling
@@ -338,7 +480,12 @@ class AdvancedPatternDetector:
                 "description": "Session ID set from user input (session fixation).",
                 "severity": Severity.HIGH,
                 "remediation": "Regenerate session ID after authentication.",
-                "languages": ["python", "php", "ruby", "java"]
+                "languages": ["python", "php", "ruby", "java"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-384",
+                "asvs": "V3.2.3",
+                "mitre": "T1563",
+                "nist": "SC-23"
             },
             {
                 "id": "NO_SESSION_TIMEOUT",
@@ -347,7 +494,12 @@ class AdvancedPatternDetector:
                 "description": "Session without expiration timeout.",
                 "severity": Severity.MEDIUM,
                 "remediation": "Set appropriate session timeout values.",
-                "languages": ["python", "javascript", "php", "java"]
+                "languages": ["python", "javascript", "php", "java"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-613",
+                "asvs": "V3.3.1",
+                "mitre": "T1110",
+                "nist": "SC-23"
             },
             
             # Access Control
@@ -358,7 +510,12 @@ class AdvancedPatternDetector:
                 "description": "Route/endpoint without authentication decorator.",
                 "severity": Severity.HIGH,
                 "remediation": "Add authentication checks to protected endpoints.",
-                "languages": ["python", "javascript", "ruby"]
+                "languages": ["python", "javascript", "ruby"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-306",
+                "asvs": "V4.1.1",
+                "mitre": "T1078",
+                "nist": "AC-3"
             },
             {
                 "id": "BROKEN_ACCESS_CONTROL",
@@ -367,7 +524,12 @@ class AdvancedPatternDetector:
                 "description": "Simple boolean check for admin access (easily bypassed).",
                 "severity": Severity.HIGH,
                 "remediation": "Implement proper role-based access control.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-285",
+                "asvs": "V4.1.1",
+                "mitre": "T1078",
+                "nist": "AC-3"
             },
             
             # Privilege Escalation
@@ -378,7 +540,12 @@ class AdvancedPatternDetector:
                 "description": "Sudo command with variable substitution (privilege escalation).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Avoid dynamic sudo commands, use sudoers configuration.",
-                "languages": ["shell", "python", "ruby"]
+                "languages": ["shell", "python", "ruby"],
+                "owasp": "A01:2021-Broken Access Control",
+                "cwe": "CWE-266",
+                "asvs": "V4.2.1",
+                "mitre": "T1548",
+                "nist": "AC-3"
             },
             
             # Authentication Bypass
@@ -413,7 +580,12 @@ class AdvancedPatternDetector:
                 "description": "Use of cryptographically broken MD5 hash.",
                 "severity": Severity.HIGH,
                 "remediation": "Use SHA-256 or stronger hash functions.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-328",
+                "asvs": "V6.2.2",
+                "mitre": "T1027",
+                "nist": "SC-8"
             },
             {
                 "id": "WEAK_HASH_SHA1",
@@ -422,7 +594,12 @@ class AdvancedPatternDetector:
                 "description": "Use of deprecated SHA1 hash (collision attacks exist).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Use SHA-256 or SHA-3 instead.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-328",
+                "asvs": "V6.2.2",
+                "mitre": "T1027",
+                "nist": "SC-8"
             },
             {
                 "id": "WEAK_CIPHER_DES",
@@ -431,7 +608,12 @@ class AdvancedPatternDetector:
                 "description": "Use of weak DES encryption algorithm.",
                 "severity": Severity.HIGH,
                 "remediation": "Use AES-256 or ChaCha20.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-327",
+                "asvs": "V6.2.2",
+                "mitre": "T1027",
+                "nist": "SC-13"
             },
             {
                 "id": "WEAK_CIPHER_RC4",
@@ -440,7 +622,12 @@ class AdvancedPatternDetector:
                 "description": "Use of broken RC4 stream cipher.",
                 "severity": Severity.HIGH,
                 "remediation": "Use AES-GCM or ChaCha20-Poly1305.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-327",
+                "asvs": "V6.2.2",
+                "mitre": "T1027",
+                "nist": "SC-13"
             },
             {
                 "id": "WEAK_CIPHER_ECB",
@@ -449,7 +636,12 @@ class AdvancedPatternDetector:
                 "description": "Use of ECB mode (not semantically secure).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Use GCM, CBC, or CTR modes with proper IV.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-327",
+                "asvs": "V6.2.2",
+                "mitre": "T1027",
+                "nist": "SC-13"
             },
             
             # Hardcoded Keys
@@ -460,7 +652,12 @@ class AdvancedPatternDetector:
                 "description": "Hardcoded encryption key in source code.",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use key derivation functions and secure storage.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-321",
+                "asvs": "V6.4.2",
+                "mitre": "T1552",
+                "nist": "SC-13"
             },
             {
                 "id": "HARDCODED_IV",
@@ -469,7 +666,12 @@ class AdvancedPatternDetector:
                 "description": "Hardcoded IV (should be random for each encryption).",
                 "severity": Severity.HIGH,
                 "remediation": "Generate random IV for each encryption operation.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-329",
+                "asvs": "V6.3.2",
+                "mitre": "T1552",
+                "nist": "SC-13"
             },
             
             # Weak Random
@@ -480,7 +682,12 @@ class AdvancedPatternDetector:
                 "description": "Use of Math.random() for security purposes (predictable).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Use crypto.randomBytes() or crypto.getRandomValues().",
-                "languages": ["javascript", "typescript"]
+                "languages": ["javascript", "typescript"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-330",
+                "asvs": "V6.3.1",
+                "mitre": "T1027",
+                "nist": "SC-13"
             },
             {
                 "id": "WEAK_RANDOM_PYTHON",
@@ -489,7 +696,12 @@ class AdvancedPatternDetector:
                 "description": "Use of random module for security (not cryptographically secure).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Use secrets module for cryptographic randomness.",
-                "languages": ["python"]
+                "languages": ["python"],
+                "owasp": "A02:2021-Cryptographic Failures",
+                "cwe": "CWE-330",
+                "asvs": "V6.3.1",
+                "mitre": "T1027",
+                "nist": "SC-13"
             },
             
             # Certificate Validation
@@ -500,7 +712,12 @@ class AdvancedPatternDetector:
                 "description": "SSL/TLS certificate verification disabled.",
                 "severity": Severity.HIGH,
                 "remediation": "Enable certificate verification for all HTTPS requests.",
-                "languages": ["python", "java", "javascript", "csharp"]
+                "languages": ["python", "java", "javascript", "csharp"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-295",
+                "asvs": "V10.2.1",
+                "mitre": "T1573",
+                "nist": "SC-23"
             },
             {
                 "id": "ACCEPT_ALL_CERTIFICATES",
@@ -524,7 +741,12 @@ class AdvancedPatternDetector:
                 "description": "Pointer used after being freed (use-after-free).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Set pointer to NULL after freeing, avoid use after free.",
-                "languages": ["c", "cpp"]
+                "languages": ["c", "cpp"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-416",
+                "asvs": "V5.2.2",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             
             # Double Free
@@ -535,7 +757,12 @@ class AdvancedPatternDetector:
                 "description": "Same pointer freed multiple times (double free).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Set pointer to NULL after freeing.",
-                "languages": ["c", "cpp"]
+                "languages": ["c", "cpp"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-415",
+                "asvs": "V5.2.2",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             
             # Memory Leaks
@@ -557,7 +784,12 @@ class AdvancedPatternDetector:
                 "description": "Shared state without synchronization (race condition).",
                 "severity": Severity.HIGH,
                 "remediation": "Use mutexes, locks, or atomic operations.",
-                "languages": ["c", "cpp", "java", "go", "rust"]
+                "languages": ["c", "cpp", "java", "go", "rust"],
+                "owasp": "A06:2021-Vulnerable and Outdated Components",
+                "cwe": "CWE-362",
+                "asvs": "V5.2.1",
+                "mitre": "T1203",
+                "nist": "SI-10"
             },
             
             # Deadlocks
@@ -603,7 +835,12 @@ class AdvancedPatternDetector:
                 "description": "Debug mode enabled (exposes sensitive information).",
                 "severity": Severity.HIGH,
                 "remediation": "Disable debug mode in production.",
-                "languages": ["python", "javascript", "ruby"]
+                "languages": ["python", "javascript", "ruby"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-215",
+                "asvs": "V14.1.1",
+                "mitre": "T1005",
+                "nist": "CM-2"
             },
             {
                 "id": "INSECURE_DEFAULT_CORS",
@@ -612,7 +849,12 @@ class AdvancedPatternDetector:
                 "description": "CORS allows all origins (*).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Restrict CORS to specific trusted origins.",
-                "languages": ["python", "javascript", "java", "csharp"]
+                "languages": ["python", "javascript", "java", "csharp"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-942",
+                "asvs": "V14.4.1",
+                "mitre": "T1566",
+                "nist": "AC-3"
             },
             
             # Error Handling
@@ -623,7 +865,12 @@ class AdvancedPatternDetector:
                 "description": "Empty exception handler (silent failure).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Log exceptions or handle them appropriately.",
-                "languages": ["python", "javascript", "java", "csharp"]
+                "languages": ["python", "javascript", "java", "csharp"],
+                "owasp": "A09:2021-Security Logging and Monitoring Failures",
+                "cwe": "CWE-248",
+                "asvs": "V7.2.1",
+                "mitre": "T1005",
+                "nist": "AU-6"
             },
             {
                 "id": "GENERIC_EXCEPTION_CATCH",
@@ -641,7 +888,12 @@ class AdvancedPatternDetector:
                 "description": "Stack trace or error details exposed to user.",
                 "severity": Severity.MEDIUM,
                 "remediation": "Log errors server-side, show generic messages to users.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-209",
+                "asvs": "V7.4.1",
+                "mitre": "T1592",
+                "nist": "SI-11"
             },
             
             # Rate Limiting
@@ -667,7 +919,12 @@ class AdvancedPatternDetector:
                 "description": "Password or credential logged.",
                 "severity": Severity.HIGH,
                 "remediation": "Never log passwords or sensitive credentials.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A09:2021-Security Logging and Monitoring Failures",
+                "cwe": "CWE-532",
+                "asvs": "V3.5.1",
+                "mitre": "T1552",
+                "nist": "AU-9"
             },
             {
                 "id": "TOKEN_IN_LOGS",
@@ -676,7 +933,12 @@ class AdvancedPatternDetector:
                 "description": "Authentication token or API key logged.",
                 "severity": Severity.HIGH,
                 "remediation": "Redact sensitive data from logs.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A09:2021-Security Logging and Monitoring Failures",
+                "cwe": "CWE-532",
+                "asvs": "V3.5.1",
+                "mitre": "T1552",
+                "nist": "AU-9"
             },
             {
                 "id": "SSN_IN_LOGS",
@@ -685,7 +947,12 @@ class AdvancedPatternDetector:
                 "description": "Personally identifiable information (PII) logged.",
                 "severity": Severity.HIGH,
                 "remediation": "Never log PII, implement data masking.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A09:2021-Security Logging and Monitoring Failures",
+                "cwe": "CWE-532",
+                "asvs": "V3.5.1",
+                "mitre": "T1552",
+                "nist": "AU-9"
             },
             
             # Secrets in Comments
@@ -696,7 +963,12 @@ class AdvancedPatternDetector:
                 "description": "Potential secret or credential in code comment.",
                 "severity": Severity.MEDIUM,
                 "remediation": "Remove secrets from comments and code.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-546",
+                "asvs": "V2.10.4",
+                "mitre": "T1552",
+                "nist": "IA-5"
             },
             
             # Environment Variables
@@ -707,7 +979,12 @@ class AdvancedPatternDetector:
                 "description": "Environment variables exposed in output.",
                 "severity": Severity.MEDIUM,
                 "remediation": "Never expose environment variables to users.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-209",
+                "asvs": "V2.10.3",
+                "mitre": "T1552",
+                "nist": "CM-2"
             },
             
             # Internal APIs
@@ -766,7 +1043,94 @@ class AdvancedPatternDetector:
                 "description": "Security-related TODO comment.",
                 "severity": Severity.LOW,
                 "remediation": "Address security TODOs before production.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-546",
+                "asvs": "V14.2.1",
+                "mitre": "T1552",
+                "nist": "SI-10"
+            }
+        ])
+    
+    def _initialize_advanced_web_rules(self):
+        """Advanced Web Vulnerabilities (JNDI, Prototype Pollution, etc.)"""
+        self.rules.extend([
+            # JNDI Injection
+            {
+                "id": "JNDI_INJECTION",
+                "name": "JNDI Injection",
+                "pattern": r"(?i)InitialContext\.lookup\(.*?params\.",
+                "description": "JNDI Lookup with user input (Remote Code Execution risk).",
+                "severity": Severity.CRITICAL,
+                "remediation": "Avoid JNDI lookups with user input, disable JNDI remote lookups.",
+                "languages": ["java"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-74",
+                "asvs": "V5.3.6",
+                "mitre": "T1190",
+                "nist": "SI-10"
+            },
+
+            # Prototype Pollution
+            {
+                "id": "PROTOTYPE_POLLUTION",
+                "name": "Prototype Pollution",
+                "pattern": r"(?i)(\.|\[)['\"]?(__proto__|constructor|prototype)['\"]?",
+                "description": "Assignment to sensitive object properties (Prototype Pollution).",
+                "severity": Severity.HIGH,
+                "remediation": "Validate keys, freeze prototypes, use Map instead of Object.",
+                "languages": ["javascript", "typescript"],
+                "owasp": "A08:2021-Software and Data Integrity Failures",
+                "cwe": "CWE-1321",
+                "asvs": "V5.2.2",
+                "mitre": "T1562",
+                "nist": "SI-10"
+            },
+            
+            # JWT Misconfiguration
+            {
+                "id": "JWT_NONE_ALGORITHM",
+                "name": "JWT None Algorithm",
+                "pattern": r"(?i)jwt\.decode.*?algorithm.*?['\"]none['\"]",
+                "description": "JWT decoding allowing 'none' algorithm.",
+                "severity": Severity.CRITICAL,
+                "remediation": "Enforce strong algorithms (HS256, RS256).",
+                "languages": ["python", "javascript", "java", "go"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-327",
+                "asvs": "V3.5.2",
+                "mitre": "T1552",
+                "nist": "IA-5"
+            },
+            {
+                "id": "JWT_WEAK_SECRET",
+                "name": "Weak JWT Secret",
+                "pattern": r"(?i)jwt\.(sign|encode).*?['\"](secret|key|12345|password)['\"]",
+                "description": "Usage of weak/hardcoded secret for JWT signing.",
+                "severity": Severity.CRITICAL,
+                "remediation": "Use strong, randomly generated secrets managed via vault.",
+                "languages": ["python", "javascript", "java", "go"],
+                "owasp": "A07:2021-Identification and Authentication Failures",
+                "cwe": "CWE-798",
+                "asvs": "V3.5.3",
+                "mitre": "T1552",
+                "nist": "IA-5"
+            },
+
+            # Unsafe Reflection
+            {
+                "id": "UNSAFE_REFLECTION_JAVA",
+                "name": "Unsafe Reflection",
+                "pattern": r"(?i)Class\.forName\(.*?params\.",
+                "description": "Dynamic loading of classes based on user input.",
+                "severity": Severity.HIGH,
+                "remediation": "Validate input against an allowlist of classes.",
+                "languages": ["java"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-470",
+                "asvs": "V5.2.5",
+                "mitre": "T1562",
+                "nist": "SI-10"
             }
         ])
     
@@ -781,7 +1145,12 @@ class AdvancedPatternDetector:
                 "description": "State-changing endpoint without CSRF protection.",
                 "severity": Severity.HIGH,
                 "remediation": "Implement CSRF tokens for state-changing operations.",
-                "languages": ["python", "javascript", "ruby", "php"]
+                "languages": ["python", "javascript", "ruby", "php"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-352",
+                "asvs": "V4.2.2",
+                "mitre": "T1566",
+                "nist": "SI-10"
             },
             
             # Clickjacking
@@ -792,7 +1161,12 @@ class AdvancedPatternDetector:
                 "description": "Response without X-Frame-Options header (clickjacking risk).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Set X-Frame-Options: DENY or SAMEORIGIN.",
-                "languages": ["python", "javascript", "java", "php"]
+                "languages": ["python", "javascript", "java", "php"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-1021",
+                "asvs": "V14.4.6",
+                "mitre": "T1566",
+                "nist": "SC-23"
             },
             
             # Git Command Injection
@@ -825,7 +1199,12 @@ class AdvancedPatternDetector:
                 "description": "Check-then-act pattern without synchronization (TOCTOU).",
                 "severity": Severity.MEDIUM,
                 "remediation": "Use transactions or locks for atomic operations.",
-                "languages": ["all"]
+                "languages": ["all"],
+                "owasp": "A06:2021-Vulnerable and Outdated Components",
+                "cwe": "CWE-367",
+                "asvs": "V1.10.1",
+                "mitre": "T1203",
+                "nist": "SI-10"
             }
         ])
     
@@ -879,7 +1258,12 @@ class AdvancedPatternDetector:
                 "description": "HTTP request with user-controlled URL (SSRF risk).",
                 "severity": Severity.HIGH,
                 "remediation": "Validate URLs against allowlist, block internal IPs.",
-                "languages": ["python", "javascript", "php", "java", "csharp"]
+                "languages": ["python", "javascript", "php", "java", "csharp"],
+                "owasp": "A10:2021-Server-Side Request Forgery",
+                "cwe": "CWE-918",
+                "asvs": "V5.2.6",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             {
                 "id": "SSRF_CLOUD_METADATA",
@@ -921,7 +1305,12 @@ class AdvancedPatternDetector:
                 "description": "XML parser without XXE protection.",
                 "severity": Severity.HIGH,
                 "remediation": "Disable external entity resolution in XML parser.",
-                "languages": ["python", "java", "csharp", "php"]
+                "languages": ["python", "java", "csharp", "php"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-611",
+                "asvs": "V5.5.2",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             {
                 "id": "XXE_DOCTYPE_ENTITY",
@@ -963,7 +1352,12 @@ class AdvancedPatternDetector:
                 "description": "File inclusion with user input (LFI vulnerability).",
                 "severity": Severity.CRITICAL,
                 "remediation": "Use allowlist for file paths, avoid user input in includes.",
-                "languages": ["php", "python", "ruby"]
+                "languages": ["php", "python", "ruby"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-98",
+                "asvs": "V5.2.4",
+                "mitre": "T1190",
+                "nist": "SI-10"
             },
             {
                 "id": "RFI_REMOTE_INCLUDE",
@@ -1342,7 +1736,12 @@ class AdvancedPatternDetector:
                             "file_path": file_path,
                             "line_number": i + 1,
                             "code_snippet": line.strip()[:200],
-                            "remediation": rule['remediation']
+                            "remediation": rule['remediation'],
+                            "owasp": rule.get('owasp', 'N/A'),
+                            "cwe": rule.get('cwe', 'N/A'),
+                            "asvs": rule.get('asvs', 'N/A'),
+                            "mitre": rule.get('mitre', 'N/A'),
+                            "nist": rule.get('nist', 'N/A')
                         })
             except re.error:
                 continue

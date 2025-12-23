@@ -52,3 +52,10 @@ class Finding(Base):
     remediation = Column(Text, nullable=True)
     
     scan = relationship("Scan", back_populates="findings")
+    
+    # Standard Controls
+    owasp_id = Column(String, nullable=True)  # OWASP Top 10 (e.g., A01:2021)
+    asvs_id = Column(String, nullable=True)   # OWASP ASVS (e.g., V5.1.1)
+    mitre_id = Column(String, nullable=True)  # MITRE ATT&CK (e.g., T1190)
+    nist_id = Column(String, nullable=True)   # NIST SSDF (e.g., PW.1.1)
+    cve_id = Column(String, nullable=True)    # CVE ID (e.g., CVE-2021-44228)
