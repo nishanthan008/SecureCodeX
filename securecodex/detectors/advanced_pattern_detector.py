@@ -1,4 +1,6 @@
 import re
+import os
+import ast
 from typing import List, Dict
 from ..models import Severity
 
@@ -27,6 +29,7 @@ class AdvancedPatternDetector:
         self._initialize_supply_chain_rules()
         self._initialize_additional_injection_rules()
         self._initialize_user_requested_rules()
+        self._initialize_best_practice_rules()
 
     
     def _initialize_input_data_handling_rules(self):
@@ -119,7 +122,12 @@ class AdvancedPatternDetector:
                 "cwe": "CWE-78",
                 "asvs": "V5.3.8",
                 "mitre": "T1059",
-                "nist": "SI-10"
+                "nist": "SI-10",
+                "confidence": 0.9,
+                "detection_method": "Pattern",
+                "vulnerable_code": "os.system('ping ' + hostname)",
+                "secure_code": "subprocess.run(['ping', hostname])",
+                "auto_fix": "Use subprocess.run() with a list of arguments instead of shell=True."
             },
             {
                 "id": "COMMAND_INJECTION_BACKTICKS",
@@ -148,6 +156,27 @@ class AdvancedPatternDetector:
                 "asvs": "V5.3.8",
                 "mitre": "T1059",
                 "nist": "SI-10"
+            },
+            
+            # SQL Injection
+            {
+                "id": "SQL_INJECTION",
+                "name": "SQL Injection",
+                "pattern": r"(?i)(SELECT|INSERT|UPDATE|DELETE|DROP).*?(\+|%s|f['\"]|\\{).*?(request\.|params\.|query\.)",
+                "description": "Directly concatenating user input into SQL queries (High risk of SQL Injection).",
+                "severity": Severity.CRITICAL,
+                "remediation": "Use parameterized queries or ORMs.",
+                "languages": ["python", "javascript", "typescript", "java", "php", "csharp"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-89",
+                "asvs": "V5.3.4",
+                "mitre": "T1190",
+                "nist": "SI-10",
+                "confidence": 0.8,
+                "detection_method": "Pattern",
+                "vulnerable_code": "query = 'SELECT * FROM users WHERE name = \"' + user_input + '\"'",
+                "secure_code": "cursor.execute('SELECT * FROM users WHERE name = %s', (user_input,))",
+                "auto_fix": "Replace string concatenation with parameterized query syntax."
             },
             
             # LDAP Injection
@@ -226,6 +255,25 @@ class AdvancedPatternDetector:
                 "asvs": "V5.3.3",
                 "mitre": "T1189",
                 "nist": "SI-10"
+            },
+            {
+                "id": "HTML_INJECTION",
+                "name": "HTML Injection",
+                "pattern": r"(?i)(innerHTML|outerHTML|document\.write).*?=.*?(request\.|params\.|query\.)",
+                "description": "HTML injection via DOM manipulation.",
+                "severity": Severity.HIGH,
+                "remediation": "Use textContent, sanitize HTML input.",
+                "languages": ["javascript", "typescript"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-79",
+                "asvs": "V5.3.3",
+                "mitre": "T1190",
+                "nist": "SI-10",
+                "confidence": 0.85,
+                "detection_method": "Pattern",
+                "vulnerable_code": "element.innerHTML = 'Welcome ' + user_name;",
+                "secure_code": "element.textContent = 'Welcome ' + user_name;",
+                "auto_fix": "Use .textContent instead of .innerHTML to avoid XSS."
             },
             {
                 "id": "XSS_DOM_BASED",
@@ -1709,6 +1757,16 @@ class AdvancedPatternDetector:
             }
             language = lang_map.get(ext)
 
+        # AST-based analysis for Python
+        if language == 'python':
+            try:
+                ast_findings = self._scan_with_ast(content, file_path)
+                findings.extend(ast_findings)
+            except Exception: # Syntax errors or parsing failures
+                pass
+
+                pass
+
         for rule in self.rules:
             # Check if rule applies to this file's language
             if language and 'languages' in rule:
@@ -1742,12 +1800,126 @@ class AdvancedPatternDetector:
                             "cwe": rule.get('cwe', 'N/A'),
                             "asvs": rule.get('asvs', 'N/A'),
                             "mitre": rule.get('mitre', 'N/A'),
-                            "nist": rule.get('nist', 'N/A')
+                            "nist": rule.get('nist', 'N/A'),
+                            "confidence_score": self._calculate_confidence(line, match, rule, language),
+                            "detection_method": rule.get('detection_method', 'Pattern'),
+                            "secure_example": rule.get('secure_code', 'N/A'),
+                            "vulnerable_example": rule.get('vulnerable_code', 'N/A'),
+                            "auto_fix": rule.get('auto_fix', 'N/A')
                         })
             except re.error:
                 continue
                 
         return findings
+
+    def _scan_with_ast(self, content: str, file_path: str) -> List[Dict]:
+        """
+        Perform AST-based analysis for Python files.
+        """
+        findings = []
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            return []
+
+        lines = content.split('\n')
+
+        for node in ast.walk(tree):
+            # 1. Command Injection Check (subprocess, os.system)
+            if isinstance(node, ast.Call):
+                func_name = ""
+                if isinstance(node.func, ast.Name):
+                    func_name = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    func_name = node.func.attr
+                
+                if func_name in ['system', 'popen', 'run', 'call', 'Popen']:
+                    # Check if first argument is a concatenation or f-string (not a constant)
+                    if node.args and not isinstance(node.args[0], ast.Constant):
+                        line_content = lines[node.lineno-1] if 0 < node.lineno <= len(lines) else ""
+                        findings.append({
+                            "rule_id": "AST_PYTHON_COMMAND_INJECTION",
+                            "name": "Command Injection (AST Identified)",
+                            "description": f"Dynamic command execution detected in {func_name}() (High risk).",
+                            "severity": Severity.CRITICAL,
+                            "file_path": file_path,
+                            "line_number": node.lineno,
+                            "code_snippet": line_content.strip()[:200],
+                            "remediation": "Use list of arguments instead of string concatenation.",
+                            "owasp": "A03:2021-Injection",
+                            "cwe": "CWE-78",
+                            "confidence_score": 0.95,
+                            "detection_method": "AST",
+                            "secure_code": f"subprocess.run(['{func_name}', 'arg1'])",
+                            "vulnerable_code": f"{func_name}('cmd' + user_input)",
+                            "auto_fix": "Refactor the command to use a list of arguments."
+                        })
+
+            # 2. Empty/Insecure Error Handling
+            if isinstance(node, ast.ExceptHandler):
+                if not node.body or (len(node.body) == 1 and isinstance(node.body[0], ast.Pass)):
+                    line_content = lines[node.lineno-1] if 0 < node.lineno <= len(lines) else ""
+                    findings.append({
+                        "rule_id": "AST_PYTHON_EMPTY_EXCEPT",
+                        "name": "Empty Exception Handler (AST Identified)",
+                        "description": "Catch-all exception block is empty or just 'pass' (Best Practice).",
+                        "severity": Severity.LOW,
+                        "file_path": file_path,
+                        "line_number": node.lineno,
+                        "code_snippet": line_content.strip()[:200],
+                        "remediation": "Handle the exception properly or log it.",
+                        "owasp": "A04:2021-Insecure Design",
+                        "cwe": "CWE-391",
+                        "confidence_score": 1.0,
+                        "detection_method": "AST",
+                        "secure_code": "except Exception as e:\n    logger.error(e)",
+                        "vulnerable_code": "except: pass",
+                        "auto_fix": "Add logging or error recovery logic to the except block."
+                    })
+
+            # 3. Debug Flags
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id.lower() in ['debug', 'testing']:
+                        if isinstance(node.value, ast.Constant) and node.value.value is True:
+                          line_content = lines[node.lineno-1] if 0 < node.lineno <= len(lines) else ""
+                          findings.append({
+                              "rule_id": "AST_PYTHON_DEBUG_TRUE",
+                              "name": "Debug Flag Enabled (AST Identified)",
+                              "description": "Debug or Testing flag is hardcoded to True (Best Practice).",
+                              "severity": Severity.MEDIUM,
+                              "file_path": file_path,
+                              "line_number": node.lineno,
+                              "code_snippet": line_content.strip()[:200],
+                              "remediation": "Set debug flags through environment variables.",
+                              "owasp": "A05:2021-Security Misconfiguration",
+                              "cwe": "CWE-16",
+                              "confidence_score": 0.9,
+                              "detection_method": "AST",
+                              "secure_code": "DEBUG = os.getenv('DEBUG') == 'True'",
+                              "vulnerable_code": "DEBUG = True",
+                              "auto_fix": "Use environment variables to control debug mode."
+                          })
+
+        return findings
+
+    def _calculate_confidence(self, line: str, match, rule: Dict, language: str = None) -> float:
+        """
+        Calculate confidence score based on pattern specificity and context.
+        """
+        base_confidence = rule.get('confidence', 0.8)
+        
+        # Increase confidence if match is very specific (long)
+        match_str = match.group(0)
+        if len(match_str) > 20:
+            base_confidence += 0.1
+            
+        # Decrease confidence if match is in a string (already handled by _is_false_positive but can be refined)
+        # For now, let's keep it simple: specific rules get higher confidence
+        if rule['id'].endswith('_CONCAT') or rule['id'].endswith('_FORMAT'):
+            base_confidence += 0.1
+            
+        return min(1.0, base_confidence)
 
     def _is_false_positive(self, line: str, match, rule_id: str, language: str = None) -> bool:
         """
@@ -1942,6 +2114,90 @@ class AdvancedPatternDetector:
                 "asvs": "V5.3.3",
                 "mitre": "T1190",
                 "nist": "SI-10"
+            }
+        ])
+
+    def _initialize_best_practice_rules(self):
+        """Best Practice & Secure Coding rules"""
+        self.rules.extend([
+            # Error Handling
+            {
+                "id": "EMPTY_CATCH_BLOCK",
+                "name": "Empty Catch/Except Block",
+                "pattern": r"(?i)(catch|except).*?\{\s*\}|except\s+Exception:\s*pass",
+                "description": "Empty error handling blocks can hide critical failures.",
+                "severity": Severity.LOW,
+                "remediation": "Log the error or handle it properly instead of ignoring.",
+                "languages": ["python", "java", "javascript", "typescript", "csharp"],
+                "owasp": "A04:2021-Insecure Design",
+                "cwe": "CWE-391",
+                "confidence": 0.9,
+                "secure_code": "except Exception as e:\n    logger.error(e)\n    raise",
+                "auto_fix": "Add a logging statement inside the empty block."
+            },
+            
+            # Debug Code
+            {
+                "id": "DEBUG_CODE_PRINT",
+                "name": "Debug Print in Production",
+                "pattern": r"(?i)\b(print\(|console\.log\()",
+                "description": "Leftover debug print statements can leak information.",
+                "severity": Severity.INFO,
+                "remediation": "Remove debug prints and use a proper logging framework.",
+                "languages": ["python", "javascript", "typescript"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-489",
+                "confidence": 0.7,
+                "secure_code": "logger.debug('Info message')",
+                "auto_fix": "Use a production logging library."
+            },
+            
+            # Dangerous Functions
+            {
+                "id": "DANGEROUS_EVAL",
+                "name": "Use of eval()",
+                "pattern": r"(?i)\beval\s*\(",
+                "description": "Direct use of eval() is extremely dangerous and can lead to code execution.",
+                "severity": Severity.HIGH,
+                "remediation": "Use safer alternatives like JSON.parse() or literal_eval().",
+                "languages": ["javascript", "python", "php"],
+                "owasp": "A03:2021-Injection",
+                "cwe": "CWE-95",
+                "confidence": 1.0,
+                "secure_code": "data = json.loads(user_input)",
+                "auto_fix": "Replace eval() with a safer parsing method."
+            },
+            
+            # Unsafe Defaults
+            {
+                "id": "UNSAFE_FLASK_DEBUG",
+                "name": "Flask Debug Mode Enabled",
+                "pattern": r"(?i)debug\s*=\s*True",
+                "description": "Flask debug mode should never be enabled in production.",
+                "severity": Severity.HIGH,
+                "remediation": "Set debug=False in production configurations.",
+                "languages": ["python"],
+                "owasp": "A05:2021-Security Misconfiguration",
+                "cwe": "CWE-16",
+                "confidence": 0.8,
+                "secure_code": "app.run(debug=False)",
+                "auto_fix": "Change debug=True to debug=False."
+            },
+
+            # Resource Management
+            {
+                "id": "INSECURE_TEMP_FILE",
+                "name": "Insecure Temp File Creation",
+                "pattern": r"(?i)tempfile\.(mktemp|TemporaryFile)\(",
+                "description": "Insecure creation of temporary files can lead to race conditions.",
+                "severity": Severity.MEDIUM,
+                "remediation": "Use tempfile.NamedTemporaryFile() or similar secure methods.",
+                "languages": ["python"],
+                "owasp": "A04:2021-Insecure Design",
+                "cwe": "CWE-377",
+                "confidence": 0.8,
+                "secure_code": "with tempfile.NamedTemporaryFile() as tmp:",
+                "auto_fix": "Switch to a context-managed temporary file."
             }
         ])
 

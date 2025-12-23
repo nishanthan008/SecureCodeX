@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 import enum
@@ -59,3 +59,10 @@ class Finding(Base):
     mitre_id = Column(String, nullable=True)  # MITRE ATT&CK (e.g., T1190)
     nist_id = Column(String, nullable=True)   # NIST SSDF (e.g., PW.1.1)
     cve_id = Column(String, nullable=True)    # CVE ID (e.g., CVE-2021-44228)
+
+    # New V2 fields
+    confidence_score = Column(Float, default=1.0) # 0.0 to 1.0 (Low to High confidence)
+    detection_method = Column(String, default="Pattern") # Pattern, AST, Taint
+    secure_example = Column(Text, nullable=True)
+    vulnerable_example = Column(Text, nullable=True)
+    auto_fix = Column(Text, nullable=True)

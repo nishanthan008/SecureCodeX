@@ -161,44 +161,52 @@ class PDFReportGenerator:
                     story.append(Paragraph(f"{severity} Severity ({len(sev_findings)} findings)", styles['Heading3']))
                     
                     # New Columns: Finding, File Path, Line, Remediation, Standards
-                    findings_data = [["Finding / Remediation", "File / Line", "Code Snippet", "Standards (OWASP/CWE/ASVS/MITRE/NIST)"]]
-                    for finding in sev_findings[:50]:  # Limit to 50 per severity to avoid huge PDFs
-                        # Make file path relative if possible
+                    findings_data = [["Finding Details", "Location / Method", "Code & Security Examples", "Standards"]]
+                    for finding in sev_findings[:50]:  # Limit to 50 per severity
                         file_display = finding.file_path
                         if scan.scan_path and finding.file_path.startswith(scan.scan_path):
                             file_display = os.path.relpath(finding.file_path, scan.scan_path)
                         
-                        snippet = finding.code_snippet[:100] + "..." if finding.code_snippet and len(finding.code_snippet) > 100 else (finding.code_snippet or "N/A")
+                        # Confidence string
+                        conf_label = f" (Confidence: {finding.confidence_score*100:.0f}%)" if finding.confidence_score else ""
                         
-                        # Format Standards
+                        # Formatted Standards
                         standards = []
                         if finding.owasp_id: standards.append(f"OWASP: {finding.owasp_id}")
                         if finding.cwe_id: standards.append(f"{finding.cwe_id}")
-                        if finding.asvs_id: standards.append(f"ASVS: {finding.asvs_id}")
-                        if finding.mitre_id: standards.append(f"MITRE: {finding.mitre_id}")
-                        if finding.nist_id: standards.append(f"NIST: {finding.nist_id}")
-                        
-                        standards_text = "\n".join(standards) if standards else "N/A"
+                        # Filter to most relevant standards for space
+                        standards_text = "\n".join(standards[:3]) if standards else "N/A"
 
-                        # Escape HTML
-                        snippet = html.escape(snippet)
-                        file_display = html.escape(file_display)
-                        finding_name = html.escape(finding.name)
-                        remediation = html.escape(finding.remediation or "Refer to standard guidelines.")
+                        # Examples
+                        v_ex = finding.vulnerable_example if finding.vulnerable_example and finding.vulnerable_example != 'N/A' else None
+                        s_ex = finding.secure_example if finding.secure_example and finding.secure_example != 'N/A' else None
                         
-                        # Combine Name and Remediation for first column
-                        col1_text = f"<b>{finding_name}</b><br/><br/><i>Possible Fix:</i> {remediation}"
-                        col2_text = f"{file_display}<br/>Line: {finding.line_number}"
+                        snippet = html.escape(finding.code_snippet[:150]) if finding.code_snippet else "N/A"
                         
+                        # Col 1: Name, Conf, Remediation, Fix
+                        col1_html = f"<b>{html.escape(finding.name)}</b><font color='grey'>{conf_label}</font><br/><br/>"
+                        col1_html += f"<i>Remediation:</i> {html.escape(finding.remediation or 'N/A')}<br/><br/>"
+                        if finding.auto_fix and finding.auto_fix != 'N/A':
+                            col1_html += f"<b>Auto-fix:</b> {html.escape(finding.auto_fix)}"
+                        
+                        # Col 2: Location, Method
+                        col2_html = f"{html.escape(file_display)}<br/>Line: {finding.line_number}<br/><br/>"
+                        col2_html += f"<i>Method: {finding.detection_method or 'Pattern'}</i>"
+                        
+                        # Col 3: Snippet compare
+                        col3_html = f"<b>Matched Code:</b><br/><font face='Courier' size='7'>{snippet}</font><br/><br/>"
+                        if s_ex:
+                            col3_html += f"<b>Secure Example:</b><br/><font face='Courier' size='7' color='green'>{html.escape(s_ex[:150])}</font>"
+
                         findings_data.append([
-                            Paragraph(col1_text, styles['Normal']),
-                            Paragraph(col2_text, styles['Normal']),
-                            Paragraph(snippet, styles['Normal']),
+                            Paragraph(col1_html, styles['Normal']),
+                            Paragraph(col2_html, styles['Normal']),
+                            Paragraph(col3_html, styles['Normal']),
                             Paragraph(standards_text, styles['Normal'])
                         ])
                     
-                    # Adjusted Column Widths
-                    findings_table = Table(findings_data, colWidths=[2.5*inch, 2.0*inch, 1.5*inch, 1.5*inch])
+                    # Column Widths Adjusted for V2 metadata
+                    findings_table = Table(findings_data, colWidths=[2.8*inch, 1.5*inch, 2.2*inch, 1.0*inch])
                     findings_table.setStyle(TableStyle([
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
