@@ -1,6 +1,6 @@
-
 import yaml
 import os
+import re
 from typing import List, Dict, Any
 
 class DSLParser:
@@ -28,18 +28,52 @@ class DSLParser:
     def _parse_file(self, file_path: str) -> List[Dict[str, Any]]:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
-                if not data or 'rules' not in data:
-                    return []
-                
-                # Normalize rules
-                for rule in data['rules']:
-                    rule['file_source'] = file_path
-                    # Add default values for missing keys
-                    rule.setdefault('severity', 'INFO')
-                    rule.setdefault('languages', ['all'])
+                # Support multi-document YAML files
+                docs = list(yaml.safe_load_all(f))
+                all_file_rules = []
+                for data in docs:
+                    if not data or 'rules' not in data:
+                        continue
                     
-                return data['rules']
+                    # Normalize rules
+                    for i, rule in enumerate(data['rules']):
+                        rule['file_source'] = file_path
+                        if 'id' not in rule:
+                            # Fallback ID: filename + index
+                            base = os.path.basename(file_path).split('.')[0]
+                            rule['id'] = f"auto-{base}-{i}"
+                        
+                        rule.setdefault('severity', 'INFO')
+                        rule.setdefault('languages', ['all'])
+                        # Pre-calculate keywords for L0 filtering
+                        rule['keywords'] = self._extract_keywords(rule)
+                        all_file_rules.append(rule)
+                        
+                return all_file_rules
         except Exception as e:
-            print(f"Error parsing rule file {file_path}: {e}")
+            # print(f"Error parsing rule file {file_path}: {e}")
             return []
+
+    def _extract_keywords(self, rule: Dict[str, Any]) -> List[str]:
+        """Extract literal keywords from patterns for fast pre-filtering."""
+        keywords = set()
+        
+        def process_block(block):
+            if isinstance(block, str):
+                # Extract words/method calls that aren't metavariables or wildcards
+                # Use a regex that finds contiguous alphanumeric strings (plus dots/underscores)
+                # Filter out anything that starts with $ or is too short
+                literals = re.findall(r'[a-zA-Z0-9_\.]{4,}', block)
+                for lit in literals:
+                    if not lit.startswith('$') and lit not in ['true', 'false', 'None', 'self']:
+                        keywords.add(lit)
+            elif isinstance(block, dict):
+                for k, v in block.items():
+                    if k in ['pattern', 'pattern-inside', 'pattern-not-inside', 'pattern-regex', 'pattern-either', 'patterns', 'pattern-not']:
+                        process_block(v)
+            elif isinstance(block, list):
+                for item in block:
+                    process_block(item)
+
+        process_block(rule)
+        return list(keywords)

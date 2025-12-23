@@ -10,16 +10,17 @@ class TaintEngine:
     def __init__(self, parser_manager):
         self.parser_manager = parser_manager
 
-    def analyze_flow(self, tree: Any, sources_nodes: List[Any], sinks_nodes: List[Any], sanitizers_nodes: List[Any] = None) -> List[Dict[str, Any]]:
+    def analyze_flow(self, tree: Any, sources_nodes: List[Any], sinks_nodes: List[Any], sanitizers_nodes: List[Any] = None, propagators: List[Dict] = None, matcher: Any = None, content: str = "") -> List[Dict[str, Any]]:
         """
         Main entry point for taint analysis on a given tree.
         """
         findings = []
-        dfg = self._build_dfg(tree)
+        dfg, node_map = self._build_dfg(tree, propagators, matcher, content)
         sanitizer_ids = {id(n) for n in (sanitizers_nodes or [])}
         
         for source in sources_nodes:
-            tainted_paths = self._find_paths_to_sinks(source, sinks_nodes, sanitizer_ids, dfg)
+            # ... cleanup source ...
+            tainted_paths = self._find_paths_to_sinks(source, sinks_nodes, sanitizer_ids, dfg, node_map)
             for path in tainted_paths:
                 findings.append({
                     "source": path[0],
@@ -31,19 +32,78 @@ class TaintEngine:
         
         return findings
 
-    def _build_dfg(self, tree: Any) -> Dict[int, Set[int]]:
+    def _build_dfg(self, tree: Any, propagators: List[Dict] = None, matcher: Any = None, content: str = "") -> (Dict[int, Set[int]], Dict[int, Any]):
         """
-        Build a basic Data Flow Graph (mapping node IDs to reachable node IDs).
+        Build a Data Flow Graph.
+        Returns a mapping of node IDs to reachable node IDs and a node_id -> node_obj map.
         """
         dfg = {}
-        # Traverse AST and identify:
-        # 1. Assignments (flow from RHS to LHS)
-        # 2. Function Arguments (flow from call sites to parameters)
-        # 3. Returns (flow from expressions to return values)
-        # 4. Expressions (flow from components to compound expressions)
-        return dfg
+        node_map = {}
+        
+        def add_edge(u, v):
+            uid, vid = id(u), id(v)
+            node_map[uid], node_map[vid] = u, v
+            if uid not in dfg: dfg[uid] = set()
+            dfg[uid].add(vid)
 
-    def _find_paths_to_sinks(self, source: Any, sinks: List[Any], sanitizer_ids: Set[int], dfg: Dict) -> List[List[Any]]:
+        # 1. Generic AST-based flow
+        def walk(node):
+            node_map[id(node)] = node
+            
+            # Python Assignment: lhs = rhs
+            if node.type in ['assignment', 'assign']:
+                lhs = node.child_by_field_name('left') or node.child_by_field_name('targets')
+                rhs = node.child_by_field_name('right') or node.child_by_field_name('value')
+                if lhs and rhs:
+                    add_edge(rhs, lhs)
+            
+            # F-Strings / JoinedStr (Python)
+            if node.type in ['joinedstr', 'f_string']:
+                for i in range(node.child_count):
+                    add_edge(node.child(i), node)
+
+            # Subscripts (x[0])
+            if node.type == 'subscript':
+                value = node.child_by_field_name('value')
+                if value:
+                    add_edge(value, node)
+
+            # Identifier usage in calls/ops
+            if node.type in ['identifier', 'name']:
+                p = node.parent
+                if p:
+                    # Flow from var name to the expression using it
+                    add_edge(node, p)
+
+            for i in range(node.child_count):
+                walk(node.child(i))
+
+        walk(tree.root_node)
+        
+        # 2. Pattern Propagators (Advanced flow like list.append or string builders)
+        if propagators and matcher:
+            for prop in propagators:
+                pattern = prop.get('pattern')
+                from_var = prop.get('from')
+                to_var = prop.get('to')
+                
+                if pattern and from_var and to_var:
+                    # Find instances of the propagator pattern
+                    matches = matcher.evaluate_rule({'id': 'temp-prop', 'pattern': pattern}, tree, content)
+                    for m in matches:
+                        bindings = m.get('bindings', {})
+                        u_node = bindings.get(from_var)
+                        v_node = bindings.get(to_var)
+                        if u_node and v_node:
+                            # Taint flows from 'from' node to 'to' node
+                            # If they are nodes, add edge. 
+                            # If they are strings (captured meta), we might need to find the node index.
+                            if hasattr(u_node, 'id') and hasattr(v_node, 'id'):
+                                add_edge(u_node, v_node)
+
+        return dfg, node_map
+
+    def _find_paths_to_sinks(self, source: Any, sinks: List[Any], sanitizer_ids: Set[int], dfg: Dict, node_map: Dict) -> List[List[Any]]:
         """
         Breadth-first search on the DFG to find reachable sinks while avoiding sanitizers.
         """
@@ -61,14 +121,16 @@ class TaintEngine:
                 continue
             
             if id(node) in sanitizer_ids:
-                continue # Data is sanitized here, stop this path
+                continue 
                 
             for next_node_id in dfg.get(id(node), []):
                 if next_node_id not in visited:
                     visited.add(next_node_id)
-                    # We need a way to look up node objects by ID if we only store IDs in DFG
-                    # For this PoC, we assume DFG stores node objects or a map exists.
-                    pass 
+                    next_node = node_map.get(next_node_id)
+                    if next_node:
+                        new_path = list(path)
+                        new_path.append(next_node)
+                        queue.append(new_path)
         return paths
 
     def _generate_evidence_sequence(self, path: List[Any]) -> List[Dict]:
@@ -80,6 +142,6 @@ class TaintEngine:
                 "step": step,
                 "line": node.start_point[0] + 1,
                 "type": node.type,
-                "snippet": "..." # Actual extraction logic would go here
+                "snippet": node.text.decode('utf8')
             })
         return sequence

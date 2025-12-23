@@ -1,0 +1,31 @@
+
+rules:
+- id: dockerfile-source-not-pinned
+  languages: [dockerfile]
+  severity: INFO
+  message: Pin Dockerfile `FROM` commands to a specific hash for reproducible builds.
+  patterns:
+  - pattern-either:
+    - patterns:
+      - pattern: FROM $IMAGE:$VERSION@$HASH
+      - metavariable-regex:
+          metavariable: $HASH
+          regex: (?!sha256:)
+    - patterns:
+      - pattern: FROM $IMAGE
+      - pattern: FROM $IMAGE:$VERSION
+      - pattern-not-inside: FROM $IMAGE:$VERSION@$HASH
+  metadata:
+    category: best-practice
+
+- id: prefer-copy-over-add
+  languages: [dockerfile]
+  severity: INFO
+  message: Prefer COPY over ADD. ADD might automatically extract archives or accept URLs, exposing to MITM.
+  patterns:
+  - pattern: 'ADD $FROM $TO'
+  - metavariable-regex:
+      metavariable: $FROM
+      regex: '(^[A-Za-z]+:\/\/|.*[.](gz|bz2|zip|tar)$)'
+  metadata:
+    category: best-practice

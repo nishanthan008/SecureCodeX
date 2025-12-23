@@ -1,0 +1,64 @@
+
+rules:
+- id: avoid-native-dml-in-loops
+  severity: ERROR
+  languages: [apex]
+  metadata:
+    category: performance
+    technology: [salesforce]
+  message: Avoid DML statements inside loops to avoid hitting the DML governor limit. Batch data into a list and invoke DML outside the loop.
+  patterns:
+  - pattern-either:
+    - pattern-inside: "for (...) { ... }"
+    - pattern-inside: "while (...) { ... }"
+    - pattern-inside: "do { ... } while (...);"
+  - pattern-either:
+    - pattern: 'insert $DATA;'
+    - pattern: 'update $DATA;'
+    - pattern: 'upsert $DATA;'
+    - pattern: 'delete $DATA;'
+    - pattern: 'Database.insert($DATA);'
+    - pattern: 'Database.update($DATA);'
+    - pattern: 'Database.upsert($DATA);'
+    - pattern: 'Database.delete($DATA);'
+
+- id: avoid-soql-in-loops
+  severity: ERROR
+  languages: [apex]
+  metadata:
+    category: performance
+    technology: [salesforce]
+  message: Avoid SOQL queries inside loops. Batch up the data and invoke the operation outside the loop.
+  patterns:
+  - pattern-either:
+    - pattern-inside: "for (...) { ... }"
+    - pattern-inside: "while (...) { ... }"
+    - pattern-inside: "do { ... } while (...);"
+  - pattern: '$OBJECTS = [...SELECT...FROM...];'
+
+- id: insecure-http-request
+  severity: ERROR
+  languages: [apex]
+  metadata:
+    cwe: [CWE-319]
+    category: security
+    technology: [salesforce]
+  message: Insecure HTTP request detected. Use HTTPS for cleartext transmission of sensitive information.
+  patterns:
+  - pattern-regex: 'http://'
+  - pattern-not-regex: '//.*'
+  - pattern-not-regex: '[*].*'
+
+- id: specify-sharing-level
+  severity: WARNING
+  languages: [apex]
+  metadata:
+    cwe: [CWE-284]
+    owasp: [A04:2021]
+    category: security
+    technology: [salesforce]
+  message: Every Apex class should have an explicit sharing mode declared (with sharing, without sharing, or inherited sharing).
+  patterns:
+  - pattern-regex: '(private|public|global).*\s(class)\s.*[{]'
+  - pattern-not-regex: '(private|public|global).*[with|without|inherited]\s[sharing].*\s(class)\s.*[{]'
+  - pattern-not-regex: '(private|public|global).*\s(class)\s.*(extends)\s(Exception).*[{]'

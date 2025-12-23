@@ -1,0 +1,62 @@
+
+rules:
+- id: csharp-sqli
+  mode: taint
+  languages: [csharp]
+  severity: ERROR
+  message: Detected a formatted string in a SQL statement. Use prepared statements with 'SqlCommand' and 'SqlParameter'.
+  pattern-sources:
+  - patterns:
+    - pattern: '(string $X)'
+    - pattern-not: '"..."'
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      - patterns:
+        - pattern: 'new $PATTERN($CMD,...)'
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: '$CMD.$PATTERN = $VALUE;'
+        - focus-metavariable: $VALUE
+    - metavariable-regex:
+        metavariable: $PATTERN
+        regex: ^(SqlCommand|CommandText|OleDbCommand|OdbcCommand|OracleCommand)$
+  pattern-sanitizers:
+  - pattern-either:
+    - pattern: '$CMD.Parameters.Add(...)'
+    - pattern: '$CMD.Parameters.AddRange(...)'
+    - pattern: '$CMD.Parameters.AddWithValue(...)'
+  metadata:
+    cwe: [CWE-89]
+    category: security
+    technology: [csharp]
+
+- id: os-command-injection-csharp
+  severity: ERROR
+  languages: [csharp]
+  message: Potential OS command injection. Untrusted input used to construct an OS command.
+  metadata:
+    cwe: [CWE-78]
+    category: security
+  patterns:
+  - pattern-inside: 'using System.Diagnostics; ...'
+  - pattern-either:
+    - patterns:
+      - pattern: 'Process.Start($ARG, ...);'
+      - focus-metavariable: $ARG
+    - patterns:
+      - pattern-inside: 'Process $PROC = new Process(); ... $PROC.Start();'
+      - pattern-either:
+        - pattern: '$PROC.StartInfo.FileName = $ARG;'
+        - pattern: '$PROC.StartInfo.Arguments = <... $ARG ...>;'
+
+- id: insecure-binaryformatter-deserialization
+  severity: WARNING
+  languages: [csharp]
+  message: The BinaryFormatter type is dangerous and insecure. Stop using it for data processing.
+  patterns:
+  - pattern-inside: 'using System.Runtime.Serialization.Formatters.Binary; ...'
+  - pattern: 'new BinaryFormatter();'
+  metadata:
+    cwe: [CWE-502]
+    category: security

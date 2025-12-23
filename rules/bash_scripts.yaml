@@ -1,0 +1,40 @@
+
+rules:
+- id: iteration-over-ls-output
+  languages: [bash]
+  severity: WARNING
+  message: Iterating over ls output is fragile. Use globs, e.g. 'dir/*' instead of '$(ls dir)'.
+  patterns:
+  - pattern: "for $VAR in $LIST; do ... done"
+  - pattern: '$(ls ...)'
+  metadata:
+    category: best-practice
+    technology: [bash]
+
+- id: useless-cat
+  languages: [bash]
+  severity: WARNING
+  message: Useless call to 'cat' in a pipeline. Use '<' and '>' for any command to read from a file or write to a file.
+  pattern-either:
+  - pattern: 'cat | ...'
+  - patterns:
+    - pattern: 'cat $ARG | ...'
+    - pattern-not: 'cat ${$SEVERAL_FILES} | ...'
+  - pattern: '... | cat'
+  metadata:
+    category: best-practice
+
+- id: curl-eval
+  languages: [bash]
+  severity: WARNING
+  mode: taint
+  message: Data is being eval'd from a `curl` command. An attacker with control of the server could inject malicious code.
+  pattern-sources:
+  - pattern: '$(curl ...)'
+  - pattern: '`curl ...`'
+  pattern-sinks:
+  - pattern: eval ...
+  metadata:
+    cwe: [CWE-95]
+    category: security
+    technology: [bash, curl]

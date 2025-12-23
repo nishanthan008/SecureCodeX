@@ -1,0 +1,40 @@
+
+rules:
+- id: double-free-c
+  languages: [c]
+  severity: ERROR
+  message: Variable '$VAR' was freed twice. This can lead to undefined behavior.
+  patterns:
+  - pattern-not: 'free($VAR); ... $VAR = NULL; ... free($VAR);'
+  - pattern-not: 'free($VAR); ... $VAR = malloc(...); ... free($VAR);'
+  - pattern-inside: 'free($VAR); ... $FREE($VAR);'
+  - metavariable-pattern:
+      metavariable: $FREE
+      pattern: free
+  metadata:
+    cwe: [CWE-415]
+    category: security
+
+- id: use-after-free-c
+  languages: [c]
+  severity: WARNING
+  message: Variable '$VAR' was used after being freed. This can lead to undefined behavior.
+  patterns:
+  - pattern-either:
+    - pattern: '$VAR->$ACCESSOR'
+    - pattern: '(*$VAR).$ACCESSOR'
+    - pattern: '$VAR[$NUM]'
+  - pattern-inside: 'free($VAR); ...'
+  - pattern-not-inside: '$VAR = NULL; ...'
+  metadata:
+    cwe: [CWE-416]
+    category: security
+
+- id: insecure-use-gets-fn
+  languages: [c]
+  severity: ERROR
+  message: Avoid 'gets()'. Use 'fgets()' or 'gets_s()' instead.
+  pattern: 'gets(...)'
+  metadata:
+    cwe: [CWE-676]
+    category: security

@@ -45,3 +45,14 @@ reports/
 # OS
 .DS_Store
 Thumbs.db
+
+# SecureCodeX Specific
+.securecodex.db
+temp_*/
+*.sarif
+verify_rules.py
+taint_test.py
+perf_test.py
+tests/test_taint_propagation.py
+tests/test_efficiency_scale.py
+/rules/external/

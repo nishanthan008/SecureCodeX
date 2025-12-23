@@ -35,39 +35,32 @@ pip install -e .
 ## Usage
 
 ### Basic Scan
-
 Scan the current directory:
-
 ```bash
 securecodex scan
 ```
 
-### Scan Specific Directory
-
+### Synchronize Rules
+Update local security rules from external repositories (e.g. Semgrep Community Rules):
 ```bash
+securecodex sync
+```
+
+### Advanced Scan Options
+```bash
+# Scan specific directory
 securecodex scan --path /path/to/source/code
-```
 
-### Scan with Custom Output
+# Specify output location and format
+securecodex scan --path ./myproject --output ./reports --format both
 
-```bash
-securecodex scan --path ./myproject --output ./reports --project-name "MyApp"
-```
-
-### Generate Both PDF and JSON Reports
-
-```bash
-securecodex scan --path ./myproject --format both
-```
-
-### Verbose Output
-
-```bash
-securecodex scan --path ./myproject --verbose
+# Persistent Scan (Keep DB for incremental speedups)
+securecodex scan --path ./myproject --keep-db
 ```
 
 ## Command-Line Options
 
+### `scan` command
 ```
 securecodex scan [OPTIONS]
 
@@ -77,8 +70,15 @@ Options:
   --project-name NAME   Project name for the report. Default: directory name
   --format FORMAT       Output format: pdf, json, or both. Default: pdf
   --verbose            Enable verbose output
-  --keep-db            Keep the SQLite database after scan (for debugging)
-  --help               Show help message
+  --keep-db            Keep the SQLite database after scan
+```
+
+### `sync` command
+```
+securecodex sync [OPTIONS]
+
+Options:
+  --rules-dir PATH      Local directory to store rules. Default: rules
 ```
 
 ## Report Contents

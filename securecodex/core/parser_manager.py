@@ -1,7 +1,8 @@
 
 import os
 import tree_sitter
-from typing import Dict, Optional, Any
+import ast
+from typing import Dict, Optional, Any, List
 
 class ParserManager:
     """
@@ -78,11 +79,69 @@ class ParserManager:
         # Or we could provide a helper to download and build (out of scope for now)
         return None
 
-    def parse(self, content: str, language_id: str) -> Optional[tree_sitter.Tree]:
-        """Parse source code content into a Tree-sitter Tree."""
+    def parse(self, content: str, language_id: str) -> Optional[Any]:
+        """Parse source code content into a Tree-sitter Tree or a native fallback."""
         parser = self.get_parser(language_id)
         if parser:
             return parser.parse(bytes(content, "utf8"))
+        
+        # Fallback for Python using native ast module
+        if language_id == 'python':
+            try:
+                native_tree = ast.parse(content)
+                return PythonASTBridge(native_tree, content)
+            except:
+                return None
+        return None
+
+class PythonASTBridge:
+    def __init__(self, tree, content):
+        self.root_node = PythonNodeBridge(tree, content)
+
+class PythonNodeBridge:
+    def __init__(self, node, content, parent=None):
+        self.node = node
+        self.content = content
+        self.parent = parent
+        self.type = node.__class__.__name__.lower()
+        self.start_point = (getattr(node, 'lineno', 1) - 1, getattr(node, 'col_offset', 0))
+        self.end_point = (getattr(node, 'end_lineno', 1) - 1, getattr(node, 'end_col_offset', 0))
+        self.text = self._get_text()
+        self._children = []
+        self._set_children()
+
+    def _get_text(self):
+        try:
+            lines = self.content.splitlines()
+            start_row, start_col = self.start_point
+            end_row, end_col = self.end_point
+            if start_row == end_row:
+                return lines[start_row][start_col:end_col].encode('utf8')
+            res = [lines[start_row][start_col:]]
+            for r in range(start_row + 1, end_row):
+                res.append(lines[r])
+            res.append(lines[end_row][:end_col])
+            return "\n".join(res).encode('utf8')
+        except:
+            return b""
+
+    def _set_children(self):
+        for child in ast.iter_child_nodes(self.node):
+            self._children.append(PythonNodeBridge(child, self.content, self))
+
+    @property
+    def child_count(self):
+        return len(self._children)
+
+    def child(self, i):
+        return self._children[i]
+    
+    def child_by_field_name(self, name):
+        # Map fields like 'left', 'right' for assignments/binary ops
+        if hasattr(self.node, name):
+            val = getattr(self.node, name)
+            if isinstance(val, ast.AST):
+                return PythonNodeBridge(val, self.content, self)
         return None
 
     def get_node_text(self, node: Any, content_bytes: bytes) -> str:

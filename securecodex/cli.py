@@ -11,6 +11,7 @@ from datetime import datetime
 from .database import DatabaseManager
 from .scanner import CLIScanner
 from .report import PDFReportGenerator
+from .core.rule_sync import RuleSync
 from . import models
 
 def main():
@@ -75,7 +76,16 @@ Examples:
     )
     
     # Version command
-    parser.add_argument('--version', action='version', version='SecureCodeX CLI 1.0.0')
+    parser.add_argument('--version', action='version', version='SecureCodeX CLI 3.0.0 (Enterprise Evolution)')
+    
+    # Sync command
+    sync_parser = subparsers.add_parser('sync', help='Synchronize security rules from external repositories')
+    sync_parser.add_argument(
+        '--rules-dir',
+        type=str,
+        default='rules',
+        help='Local directory to store rules. Default: rules'
+    )
     
     args = parser.parse_args()
     
@@ -85,6 +95,8 @@ Examples:
     
     if args.command == 'scan':
         run_scan(args)
+    elif args.command == 'sync':
+        run_sync(args)
 
 def run_scan(args):
     """Run a security scan"""
@@ -184,6 +196,21 @@ def run_scan(args):
             db_manager.cleanup(keep_db=False)
         else:
             print(f"\n[SAVE] Database kept at: {db_manager.db_path}")
+
+def run_sync(args):
+    """Synchronize rules from external sources."""
+    print("\n" + "="*60)
+    print("  SecureCodeX - Rule Synchronization")
+    print("="*60)
+    
+    rules_dir = os.path.abspath(args.rules_dir)
+    if not os.path.exists(rules_dir):
+        os.makedirs(rules_dir)
+        
+    syncer = RuleSync(rules_dir)
+    print(f"[INFO] Synchronizing rules to {rules_dir}...")
+    syncer.sync_semgrep()
+    print("\n[OK] Rule synchronization complete!\n")
 
 def generate_json_report(db, scan_id, output_path):
     """Generate JSON report"""

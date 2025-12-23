@@ -1,0 +1,323 @@
+
+rules:
+- id: detect-openai-csharp
+  languages: [csharp]
+  severity: INFO
+  message: 'Possibly found usage of AI: OpenAI'
+  pattern-either:
+  - pattern: using OpenAI
+  - pattern: (ChatClient $CLIENT)
+  - pattern: (ChatClient $CLIENT).$FUNC(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-gemini-go
+  languages: [go]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: import "github.com/google/generative-ai-go"
+  - pattern: genai.NewClient(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-openai-go
+  languages: [go]
+  severity: INFO
+  message: 'Possibly found usage of AI: OpenAI'
+  pattern-either:
+  - pattern: import "github.com/sashabaranov/go-openai"
+  - pattern: gogpt.NewClient(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-gemini-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: import google.generativeai
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-mistral-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI: Mistral'
+  pattern-either:
+  - pattern: import mistralai
+  - pattern: MistralClient(...)
+  - pattern: $CLIENT.chat(...,model=...,...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-huggingface-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI: HuggingFace'
+  pattern-either:
+  - pattern: import huggingface_hub
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-langchain-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI tooling: LangChain'
+  pattern-either:
+  - pattern: import langchain_openai
+  - pattern: ChatOpenAI(...)
+  - pattern: import langchain_community
+  - pattern: Ollama(...)
+  - pattern: import langchain_anthropic
+  - pattern: ChatAnthropic(...)
+  - pattern: import langchain_cohere
+  - pattern: ChatCohere(...)
+  - pattern: import langchain_core
+  - pattern: import langchain
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-openai-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI: OpenAI'
+  pattern-either:
+  - pattern: import openai
+  - pattern: from openai import $ANYTHING
+  - pattern: OpenAI(...)
+  - pattern: $CLIENT.chat.completions.$FUNC(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-pytorch-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI tooling: PyTorch'
+  pattern-either:
+  - pattern: import torch
+  - pattern: torch.$FUNC(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-tensorflow-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI tooling: Tensorflow'
+  pattern-either:
+  - pattern: import tensorflow
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-anthropic-python
+  languages: [python]
+  severity: INFO
+  message: 'Possibly found usage of AI: Anthropic'
+  pattern-either:
+  - pattern: import anthropic
+  - pattern: from anthropic import $ANYTHING
+  - pattern: Anthropic(...)
+  - pattern: anthropic.Anthropic(...)
+  - pattern: $CLIENT.messages.$FUNC(...,model=...,...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-gemini-kotlin
+  languages: [kotlin]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: import com.google.ai
+  - pattern: GenerativeModel(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-gemini-js
+  languages: [js, ts]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: import "@google/generative-ai"
+  - pattern: import $ANYTHING from "@google/generative-ai";
+  - pattern: new GoogleGenerativeAI(...)
+  - pattern: $GENAI.getGenerativeModel(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-mistral-js
+  languages: [js, ts]
+  severity: INFO
+  message: 'Possibly found usage of AI: Mistral'
+  pattern-either:
+  - pattern: import "@mistralai"
+  - pattern: new MistralClient(...)
+  - pattern: '$CLIENT.chat({model: ...})'
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-promptfoo-js
+  languages: [js, ts]
+  severity: INFO
+  message: 'Possibly found usage of AI tooling: promptfoo'
+  pattern-either:
+  - pattern: import "promptfoo"
+  - pattern: promptfoo.evaluate(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-vercel-ai-js
+  languages: [js, ts]
+  severity: INFO
+  message: 'Possibly found usage of AI: VercelAI'
+  pattern-either:
+  - pattern: import "ai"
+  - pattern: import "@ai-sdk"
+  - pattern: generateText({model:...})
+  - pattern: generateText({prompt:...})
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-openai-js
+  languages: [js, ts]
+  severity: INFO
+  message: 'Possibly found usage of AI: OpenAI'
+  pattern-either:
+  - pattern: import "openai"
+  - pattern: import $ANYTHING from "openai";
+  - pattern: new OpenAI(...)
+  - pattern: $CLIENT.chat.completions.$FUNC(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-anthropic-js
+  languages: [js, ts]
+  severity: INFO
+  message: 'Possibly found usage of AI: Anthropic'
+  pattern-either:
+  - pattern: import "@anthropic-ai"
+  - pattern: import $ANYTHING from "@anthropic-ai";
+  - pattern: new Anthropic(...)
+  - pattern: anthropic.messages.$FUNC(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-generic-ai-anthprop
+  languages: [generic]
+  severity: INFO
+  message: 'Possibly found usage of AI: Anthropic'
+  pattern-either:
+  - pattern: anthropic
+  - pattern: Anthropic
+  - pattern: claude
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-generic-ai-gem
+  languages: [generic]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: google/generative-ai
+  - pattern: GoogleGenerativeAI
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-generic-ai-oai
+  languages: [generic]
+  severity: INFO
+  message: 'Possibly found usage of AI: OpenAI'
+  pattern-either:
+  - pattern: openai
+  - pattern: OpenAI
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-generic-ai-api
+  languages: [generic]
+  severity: INFO
+  message: 'Possibly found usage of AI: HTTP Request'
+  pattern-either:
+  - pattern: /chat/completions
+  - pattern: api.openai.com
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-gemini-swift
+  languages: [swift]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: import GoogleGenerativeAI
+  - pattern: GenerativeModel(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-apple-core-ml
+  languages: [swift]
+  severity: INFO
+  message: 'Possibly found usage of AI: Apple CoreML'
+  pattern-either:
+  - pattern: VNCoreMLModel(...)
+  - pattern: MLModelConfiguration(...)
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW
+
+- id: detect-gemini-dart
+  languages: [dart]
+  severity: INFO
+  message: 'Possibly found usage of AI: Gemini'
+  pattern-either:
+  - pattern: import 'package:google_generative_ai';
+  - pattern: final $MODEL = GenerativeModel(...);
+  metadata:
+    category: maintainability
+    technology: [genAI, LLMs]
+    confidence: LOW

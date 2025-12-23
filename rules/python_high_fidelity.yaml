@@ -1,0 +1,65 @@
+rules:
+  - id: python-sqli-high-fidelity
+    name: "High-Fidelity SQL Injection"
+    description: "Detected a potential SQL injection where untrusted input reaches a database execution sink without proper sanitization."
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: flask.request.args.get(...)
+      - pattern: flask.request.form.get(...)
+      - pattern: request.args.get(...)
+    pattern-sinks:
+      - pattern: db.execute($SQL)
+      - pattern: cursor.execute($SQL)
+      - pattern: connection.execute($SQL)
+    pattern-sanitizers:
+      - pattern: int(...)
+      - pattern: float(...)
+    message: "Untrusted data from $SOURCE reaches $SINK. Cast to int/float or use parameterized queries to fix."
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: python-os-command-injection
+    name: "High-Fidelity Command Injection"
+    description: "Untrusted input reaching a shell execution sink, which can lead to arbitrary command execution."
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: flask.request.args.get(...)
+      - pattern: request.args.get(...)
+    pattern-sinks:
+      - pattern: os.system(...)
+      - pattern: subprocess.Popen(...)
+      - pattern: subprocess.run(...)
+    pattern-sanitizers:
+      - pattern: shlex.quote(...)
+    message: "Potential command injection from $SOURCE to $SINK. Use shlex.quote() or pass arguments as a list."
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  - id: python-path-traversal
+    name: "High-Fidelity Path Traversal"
+    description: "User input used in file system operations without proper sanitization, allowing access to unauthorized files."
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: flask.request.args.get(...)
+    pattern-sinks:
+      - pattern: open(...)
+      - pattern: os.open(...)
+      - pattern: os.path.join(...)
+    pattern-sanitizers:
+      - pattern: os.path.basename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+    message: "Untrusted input used in file operation $SINK. Use os.path.basename() to sanitize filenames."
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9
