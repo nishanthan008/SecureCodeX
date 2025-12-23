@@ -829,50 +829,7 @@ class AdvancedPatternDetector:
             }
         ])
     
-    def scan_content(self, content: str, file_path: str, language: str = None) -> List[Dict]:
-        """
-        Scan content for vulnerabilities using pattern matching.
-        
-        Args:
-            content: File content to scan
-            file_path: Path to the file being scanned
-            language: Programming language (optional, for filtering rules)
-        
-        Returns:
-            List of findings
-        """
-        findings = []
-        lines = content.split('\n')
-        
-        for rule in self.rules:
-            # Skip rules not applicable to this language
-            if language and 'languages' in rule:
-                rule_langs = rule['languages']
-                if 'all' not in rule_langs and language not in rule_langs:
-                    continue
-            
-            try:
-                regex = re.compile(rule['pattern'], re.MULTILINE | re.DOTALL)
-                
-                # Search line by line for better line number accuracy
-                for i, line in enumerate(lines):
-                    if regex.search(line):
-                        findings.append({
-                            "rule_id": rule['id'],
-                            "name": rule['name'],
-                            "description": rule['description'],
-                            "severity": rule['severity'],
-                            "file_path": file_path,
-                            "line_number": i + 1,
-                            "code_snippet": line.strip()[:200],  # Limit snippet length
-                            "remediation": rule['remediation']
-                        })
-                
-            except re.error as e:
-                print(f"Invalid regex for rule {rule['id']}: {e}")
-        
-        return findings
-    
+
     def get_rule_count(self) -> int:
         """Get total number of detection rules"""
         return len(self.rules)
@@ -1329,36 +1286,52 @@ class AdvancedPatternDetector:
             }
         ])
 
-    def scan_content(self, content: str, file_path: str) -> List[Dict]:
-        """Scan content using loaded rules"""
+    def scan_content(self, content: str, file_path: str, language: str = None) -> List[Dict]:
+        """
+        Scan content for vulnerabilities using pattern matching.
+        
+        Args:
+            content: File content to scan
+            file_path: Path to the file being scanned
+            language: Programming language (optional, for filtering rules)
+        
+        Returns:
+            List of findings
+        """
         findings = []
         lines = content.split('\n')
         
+        # Determine language if not provided
+        if not language:
+            ext = file_path.split('.')[-1].lower()
+            lang_map = {
+                'py': 'python', 'js': 'javascript', 'ts': 'typescript',
+                'java': 'java', 'c': 'c', 'cpp': 'cpp', 'cc': 'cpp',
+                'h': 'cpp', 'hpp': 'cpp', 'cs': 'csharp', 'php': 'php',
+                'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'sh': 'shell',
+                'sql': 'sql', 'yaml': 'yaml', 'yml': 'yaml', 'swift': 'swift',
+                'kt': 'kotlin'
+            }
+            language = lang_map.get(ext)
+
         for rule in self.rules:
             # Check if rule applies to this file's language
-            if 'languages' in rule and rule['languages'] != ["all"]:
-                # Simple extension check
-                ext = file_path.split('.')[-1].lower()
-                lang_map = {
-                    'py': 'python', 'js': 'javascript', 'ts': 'typescript',
-                    'java': 'java', 'c': 'c', 'cpp': 'cpp', 'cc': 'cpp',
-                    'h': 'cpp', 'hpp': 'cpp', 'cs': 'csharp', 'php': 'php',
-                    'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'sh': 'shell'
-                }
-                file_lang = lang_map.get(ext)
-                if file_lang and file_lang not in rule['languages']:
+            if language and 'languages' in rule:
+                rule_langs = rule['languages']
+                if 'all' not in rule_langs and language not in rule_langs:
                     continue
 
             try:
-                regex = re.compile(rule['pattern'])
+                regex = re.compile(rule['pattern'], re.IGNORECASE)
                 for i, line in enumerate(lines):
-                    # Skip very long lines
-                    if len(line) > 1000:
+                    # Skip very long lines (performance)
+                    if len(line) > 2000:
                         continue
                         
-                    if regex.search(line):
-                        # False positive check
-                        if self._is_false_positive(line, rule):
+                    match = regex.search(line)
+                    if match:
+                        # False positive check with context
+                        if self._is_false_positive(line, match, rule['id'], language):
                             continue
                             
                         findings.append({
@@ -1372,20 +1345,53 @@ class AdvancedPatternDetector:
                             "remediation": rule['remediation']
                         })
             except re.error:
-                # print(f"Invalid regex for rule {rule['id']}")
-                pass
+                continue
                 
         return findings
 
-    def _is_false_positive(self, line: str, rule: dict) -> bool:
-        """Check for common false positives"""
+    def _is_false_positive(self, line: str, match, rule_id: str, language: str = None) -> bool:
+        """
+        Check for common false positives (comments, etc)
+        """
+        # Rules that specifically target comments should not be filtered
+        if rule_id in ['SECRET_IN_COMMENT', 'TODO_SECURITY']:
+            return False
+
         stripped = line.strip()
+        start_index = match.start()
         
-        # Ignore comments
+        # 1. Full line comments (fastest check)
         if stripped.startswith(('#', '//', '*', '--', '<!--')):
             return True
             
-        # Ignore test files logic could be here, but usually controlled by scanner
+        # 2. Context-aware inline comments
+        markers = []
+        if language in ['python', 'ruby', 'shell', 'yaml', 'perl', 'dockerfile']:
+             markers = ['#']
+        elif language in ['javascript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'scala']:
+             markers = ['//']
+        elif language == 'php':
+             markers = ['//', '#']
+        elif language == 'sql':
+             markers = ['--']
+        else:
+             markers = ['#', '//'] # Default fallback
+
+        for marker in markers:
+            comment_idx = line.find(marker)
+            if comment_idx != -1:
+                # Handle URL edge case (http://...)
+                if marker == '//' and comment_idx > 0 and line[comment_idx-1] == ':':
+                    # Try to find next occurrence
+                    next_idx = line.find(marker, comment_idx + 1)
+                    if next_idx != -1:
+                        comment_idx = next_idx
+                    else:
+                        continue # No real comment found
+                
+                # If match starts AFTER a comment marker, it's inside a comment
+                if start_index > comment_idx:
+                    return True
         
         return False
 

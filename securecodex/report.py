@@ -42,7 +42,14 @@ class PDFReportGenerator:
             severity_dict[severity] = count
         
         # Create PDF
-        doc = SimpleDocTemplate(output_path, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        doc = SimpleDocTemplate(
+            output_path, 
+            pagesize=letter,
+            topMargin=0.5*inch, 
+            bottomMargin=0.5*inch,
+            leftMargin=0.5*inch,
+            rightMargin=0.5*inch
+        )
         story = []
         styles = getSampleStyleSheet()
         
@@ -87,7 +94,7 @@ class PDFReportGenerator:
             ["Scan Duration:", duration],
         ]
         
-        project_table = Table(project_data, colWidths=[2*inch, 4*inch])
+        project_table = Table(project_data, colWidths=[2.5*inch, 5.0*inch])
         project_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f3f4f6')),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
@@ -113,7 +120,7 @@ class PDFReportGenerator:
             ["Total", str(len(findings))],
         ]
         
-        vuln_table = Table(vuln_data, colWidths=[3*inch, 3*inch])
+        vuln_table = Table(vuln_data, colWidths=[3.75*inch, 3.75*inch])
         vuln_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -173,7 +180,7 @@ class PDFReportGenerator:
                             Paragraph(snippet, styles['Normal'])
                         ])
                     
-                    findings_table = Table(findings_data, colWidths=[1.8*inch, 2.2*inch, 0.5*inch, 2*inch])
+                    findings_table = Table(findings_data, colWidths=[1.5*inch, 2.5*inch, 0.5*inch, 3.0*inch])
                     findings_table.setStyle(TableStyle([
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
                         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
