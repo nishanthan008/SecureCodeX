@@ -84,21 +84,22 @@ class PDFReportGenerator:
             duration = f"{(scan.end_time - scan.start_time).total_seconds():.2f}s"
         
         project_data = [
-            ["Project Name:", scan.project_name],
+            ["Project Name:", Paragraph(html.escape(scan.project_name), styles['Normal'])],
             ["Scan Date:", scan.start_time.strftime("%Y-%m-%d %H:%M:%S") if scan.start_time else "N/A"],
-            ["Scan Path:", scan.scan_path],
+            ["Scan Path:", Paragraph(html.escape(scan.scan_path), styles['Normal'])],
             ["Status:", scan.status],
             ["Total Files:", str(scan.total_files)],
             ["Lines of Code:", f"{scan.total_loc:,}"],
-            ["Languages:", scan.languages or "N/A"],
+            ["Languages:", Paragraph(html.escape(scan.languages or "N/A"), styles['Normal'])],
             ["Scan Duration:", duration],
         ]
         
-        project_table = Table(project_data, colWidths=[2.5*inch, 5.0*inch])
+        project_table = Table(project_data, colWidths=[2.0*inch, 5.5*inch])
         project_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f3f4f6')),
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 10),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
