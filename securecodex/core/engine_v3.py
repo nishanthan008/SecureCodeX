@@ -6,6 +6,7 @@ from .parser_manager import ParserManager
 from .matcher import Matcher
 from .dsl_parser import DSLParser
 from .taint_engine import TaintEngine
+from .utils import calculate_file_hash
 from ..models import Severity
 
 class EngineV3:
@@ -21,6 +22,7 @@ class EngineV3:
         self.taint_engine = TaintEngine(self.parser_manager)
         
         self.rules = self.dsl_parser.load_rules()
+        self.scan_cache = {} # file_path -> sha256_hash
 
     def scan_project(self, project_path: str) -> List[Dict[str, Any]]:
         """
@@ -38,8 +40,16 @@ class EngineV3:
     def scan_file(self, file_path: str) -> List[Dict[str, Any]]:
         """
         Scan a single file through all execution phases.
+        Implements incremental scanning via hashing.
         """
         findings = []
+        
+        # Incremental Scanning: Check if file has changed
+        current_hash = calculate_file_hash(file_path)
+        if file_path in self.scan_cache and self.scan_cache[file_path] == current_hash:
+            return [] # Skip unchanged file
+        
+        self.scan_cache[file_path] = current_hash
         content = self._read_file(file_path)
         if not content:
             return []
@@ -47,7 +57,7 @@ class EngineV3:
         language = self._detect_language(file_path)
         applicable_rules = self._get_applicable_rules(language)
         
-        # Phase 1: Pre-filtering (Fast regex checks)
+        # Phase 1: Filter (L0) - Fast regex pre-filter
         filtered_rules = self._pre_filter(content, applicable_rules)
         if not filtered_rules:
             return []
@@ -57,21 +67,31 @@ class EngineV3:
         if not tree:
             return []
 
-        # Phase 3: Structural/AST Matching
+        # Phase 3: Pattern (L1) - Structural Matching
         for rule in filtered_rules:
+            # Skip taint rules for now (Phase 4)
+            if rule.get('mode') == 'taint':
+                continue
+                
             rule_findings = self.matcher.find_matches(rule.get('pattern', ''), tree, content.encode('utf8'))
             for rf in rule_findings:
-                # Add rule metadata to finding
                 rf.update({
                     "rule_id": rule['id'],
                     "severity": rule['severity'],
                     "file_path": file_path,
-                    "message": rule.get('message', '')
+                    "message": rule.get('message', ''),
+                    "phase": "structural"
                 })
                 findings.append(rf)
 
-        # Phase 4: Taint Analysis (if rule requires it)
-        # ... logic to trigger taint analysis for relevant rules ...
+        # Phase 4: Deep (L2) - Taint Analysis
+        taint_rules = [r for r in filtered_rules if r.get('mode') == 'taint']
+        for rule in taint_rules:
+            # We would identify sources/sinks nodes via matcher first
+            # source_nodes = self.matcher.find_nodes(rule['source'], tree, ...)
+            # sink_nodes = self.matcher.find_nodes(rule['sink'], tree, ...)
+            # results = self.taint_engine.analyze_flow(tree, source_nodes, sink_nodes) 
+            pass
 
         return findings
 
