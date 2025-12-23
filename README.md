@@ -4,12 +4,12 @@ A powerful command-line tool for scanning source code to detect security vulnera
 
 ## Features
 
-- 🔍 **Comprehensive Scanning**: Detects vulnerabilities across multiple programming languages
-- 🚀 **Fast & Efficient**: Scans all files without size thresholds
-- 📊 **Detailed Reports**: Generates PDF and JSON reports with severity breakdowns
-- 🎯 **Multi-Language Support**: Supports Python, JavaScript, Java, C/C++, PHP, and more
-- 🔐 **Security Focused**: Identifies SQL injection, XSS, hardcoded credentials, and more
-- 📈 **Progress Tracking**: Real-time progress bars and statistics
+- 🔍 **Engine V3 (Structural Analysis)**: Moves beyond regex with Semgrep-style AST and Taint analysis
+- 🌳 **Tree-sitter Powered**: Multi-language support with high-precision structural matching
+- 🎯 **Advanced Taint Tracking**: Detects complex source-to-sink vulnerabilities
+- 📊 **Rich Security Reports**: Includes confidence scores, secure code examples, and auto-fix suggestions
+- 🚀 **Fast & Rule-Driven**: Extensible YAML-based rule DSL for rapid custom rule development
+- 📈 **Standard Mapping**: Rules mapped to OWASP, CWE, ASVS, MITRE, and NIST
 
 ## Installation
 
@@ -171,6 +171,30 @@ securecodex scan --path /sample/data/file --output ~/security-reports --project-
 
 ```bash
 securecodex scan --path /path/to/file.py --verbose
+```
+
+## Engine V3 Rule DSL
+
+SecureCodeX now supports a powerful YAML-based rule DSL inspired by Semgrep. This allows for structural pattern matching and taint analysis.
+
+### Example: Dangerous API Pattern
+```yaml
+rules:
+  - id: dangerous-os-system
+    severity: HIGH
+    languages: [python]
+    pattern: os.system(...)
+    message: "Using os.system() is dangerous."
+```
+
+### Example: Source-to-Sink Taint Rule
+```yaml
+rules:
+  - id: python-sqli-taint
+    mode: taint
+    source: $REQ.params.get(...)
+    sink: db.execute(...)
+    message: "User input reaches SQL sink."
 ```
 
 ## Supported Vulnerability Types
