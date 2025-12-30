@@ -1,33 +1,45 @@
 
 from typing import List, Dict, Any, Set, Optional
+from .sanitizer_library import SanitizerLibrary, SanitizerEffectiveness
 
 class TaintEngine:
     """
     Implements source-to-sink taint analysis.
     Tracks data flow through the AST to verify if user input reaches a dangerous sink.
+    Enhanced with sanitizer effectiveness analysis.
     """
     
     def __init__(self, parser_manager):
         self.parser_manager = parser_manager
+        self.sanitizer_lib = SanitizerLibrary()
 
-    def analyze_flow(self, tree: Any, sources_nodes: List[Any], sinks_nodes: List[Any], sanitizers_nodes: List[Any] = None, propagators: List[Dict] = None, matcher: Any = None, content: str = "") -> List[Dict[str, Any]]:
+    def analyze_flow(self, tree: Any, sources_nodes: List[Any], sinks_nodes: List[Any], sanitizers_nodes: List[Any] = None, propagators: List[Dict] = None, matcher: Any = None, content: str = "", language: str = "unknown", vulnerability_type: str = "unknown") -> List[Dict[str, Any]]:
         """
         Main entry point for taint analysis on a given tree.
+        Enhanced with sanitizer effectiveness analysis.
         """
         findings = []
         dfg, node_map = self._build_dfg(tree, propagators, matcher, content)
         sanitizer_ids = {id(n) for n in (sanitizers_nodes or [])}
         
         for source in sources_nodes:
-            # ... cleanup source ...
+            # Find all paths from source to sinks
             tainted_paths = self._find_paths_to_sinks(source, sinks_nodes, sanitizer_ids, dfg, node_map)
+            
             for path in tainted_paths:
+                # Analyze sanitization along the path
+                sanitization_analysis = self._analyze_path_sanitization(
+                    path, sanitizers_nodes or [], language, vulnerability_type
+                )
+                
                 findings.append({
                     "source": path[0],
                     "sink": path[-1],
-                    "path": path, # Full evidence path
-                    "confidence": 1.0,
-                    "evidence": self._generate_evidence_sequence(path)
+                    "path": path,
+                    "evidence": self._generate_evidence_sequence(path),
+                    "sanitization_status": sanitization_analysis['status'],
+                    "sanitization_explanation": sanitization_analysis['explanation'],
+                    "sanitizers_found": sanitization_analysis.get('sanitizers_found', []),
                 })
         
         return findings
@@ -132,6 +144,47 @@ class TaintEngine:
                         new_path.append(next_node)
                         queue.append(new_path)
         return paths
+
+    def _analyze_path_sanitization(
+        self, 
+        path: List[Any], 
+        sanitizers: List[Any],
+        language: str,
+        vulnerability_type: str
+    ) -> Dict[str, Any]:
+        """
+        Analyze sanitization effectiveness along a data flow path.
+        
+        Args:
+            path: List of AST nodes in the data flow path
+            sanitizers: List of sanitizer nodes
+            language: Programming language
+            vulnerability_type: Type of vulnerability
+        
+        Returns:
+            Dictionary with sanitization analysis
+        """
+        # Extract code snippets from path
+        path_snippets = []
+        for node in path:
+            if hasattr(node, 'text'):
+                path_snippets.append(node.text.decode('utf8'))
+            else:
+                path_snippets.append(str(node))
+        
+        # Use sanitizer library to analyze
+        source_snippet = path_snippets[0] if path_snippets else ""
+        sink_snippet = path_snippets[-1] if path_snippets else ""
+        
+        analysis = self.sanitizer_lib.analyze_sanitization(
+            source_snippet,
+            sink_snippet,
+            path_snippets,
+            language,
+            vulnerability_type
+        )
+        
+        return analysis
 
     def _generate_evidence_sequence(self, path: List[Any]) -> List[Dict]:
         """Convert a list of AST nodes into a human-readable evidence sequence."""

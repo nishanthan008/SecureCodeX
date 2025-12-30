@@ -60,9 +60,19 @@ class Finding(Base):
     nist_id = Column(String, nullable=True)   # NIST SSDF (e.g., PW.1.1)
     cve_id = Column(String, nullable=True)    # CVE ID (e.g., CVE-2021-44228)
 
-    # New V2 fields
-    confidence_score = Column(Float, default=1.0) # 0.0 to 1.0 (Low to High confidence)
-    detection_method = Column(String, default="Pattern") # Pattern, AST, Taint
+    # Enhanced V2 fields - Confidence & Evidence
+    confidence_score = Column(Integer, default=50)  # 0-100 scale (changed from Float)
+    confidence_level = Column(String, default="MEDIUM")  # HIGH, MEDIUM, LOW
+    detection_method = Column(String, default="Pattern")  # Pattern, AST, Taint
     secure_example = Column(Text, nullable=True)
     vulnerable_example = Column(Text, nullable=True)
     auto_fix = Column(Text, nullable=True)
+    
+    # High-Accuracy Detection fields
+    evidence_trace = Column(Text, nullable=True)  # JSON string of source-sink-sanitizer trace
+    sanitization_status = Column(String, nullable=True)  # MISSING, WEAK, BYPASSED, EFFECTIVE
+    sanitization_explanation = Column(Text, nullable=True)
+    framework_context = Column(String, nullable=True)  # Detected frameworks (comma-separated)
+    vulnerability_type = Column(String, nullable=True)  # sql, xss, command, path, etc.
+    is_reachable = Column(Integer, default=1)  # Boolean as integer (1=True, 0=False)
+    is_test_code = Column(Integer, default=0)  # Boolean as integer

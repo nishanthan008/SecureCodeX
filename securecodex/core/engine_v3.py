@@ -10,6 +10,10 @@ from .utils import calculate_file_hash
 from ..models import Severity
 
 from .db import ScanDB
+from .confidence_calculator import ConfidenceCalculator
+from .framework_detector import FrameworkDetector
+from .context_filter import ContextFilter
+from .reachability_analyzer import ReachabilityAnalyzer
 
 class EngineV3:
     """
@@ -17,15 +21,23 @@ class EngineV3:
     Orchestrates the multi-phase analysis process.
     """
     
-    def __init__(self, rules_dir: str, db_path: str = ".securecodex.db"):
+    def __init__(self, rules_dir: str, db_path: str = ".securecodex.db", min_confidence: str = 'MEDIUM'):
         self.parser_manager = ParserManager()
         self.matcher = Matcher(self.parser_manager)
         self.dsl_parser = DSLParser(rules_dir)
         self.taint_engine = TaintEngine(self.parser_manager)
         
+        # Initialize new analysis modules
+        self.confidence_calc = ConfidenceCalculator()
+        self.framework_detector = FrameworkDetector()
+        self.context_filter = ContextFilter()
+        self.reachability_analyzer = ReachabilityAnalyzer()
+        
+        self.min_confidence = min_confidence  # Minimum confidence level to report
         self.rules = self.dsl_parser.load_rules()
         self.db = ScanDB(db_path)
         print(f"[INFO] EngineV3 initialized with {len(self.rules)} rules.")
+        print(f"[INFO] Minimum confidence level: {min_confidence}")
 
     def scan_project(self, project_path: str) -> List[Dict[str, Any]]:
         """
@@ -74,6 +86,9 @@ class EngineV3:
             # Fallback for generic or unknown languages: simplified regex scan
             return self._fallback_regex_scan(content, filtered_rules, file_path)
 
+        # Detect frameworks for context-aware analysis
+        framework_context = self.framework_detector.detect_frameworks(content, language, file_path)
+
         # Phase 3: Pattern (L1) - Structural Matching
         for rule in filtered_rules:
             if rule.get('mode') == 'taint':
@@ -81,19 +96,51 @@ class EngineV3:
                 
             rule_findings = self.matcher.evaluate_rule(rule, tree, content)
             for rf in rule_findings:
+                # Enrich with context
+                rf = self.context_filter.enrich_finding_context(rf, content, language)
+                rf = self.reachability_analyzer.enrich_finding_with_reachability(rf, tree)
+                
+                # Check if should be filtered
+                should_filter, filter_reason = self.context_filter.should_filter_finding(rf, content, language)
+                if should_filter:
+                    continue
+                
+                # Calculate confidence score
+                context_data = {
+                    'is_test_code': rf.get('context', {}).get('is_test_code', False),
+                    'is_reachable': rf.get('is_reachable', True),
+                    'in_comment': rf.get('context', {}).get('in_comment', False),
+                    'framework_protection': self.framework_detector.should_reduce_confidence(
+                        framework_context, self._get_vulnerability_type(rule)
+                    ),
+                }
+                
+                confidence_score = self.confidence_calc.calculate_confidence(rf, rule, context_data)
+                
+                # Filter by minimum confidence
+                if not self.confidence_calc.should_report(confidence_score, self.min_confidence):
+                    continue
+                
                 rf.update({
                     "rule_id": rule['id'],
                     "severity": rule['severity'],
                     "file_path": file_path,
                     "message": rule.get('message', ''),
                     "phase": "structural",
-                    "confidence": rule.get('metadata', {}).get('confidence', 'MEDIUM')
+                    "confidence_score": confidence_score,
+                    "confidence_level": self.confidence_calc.get_confidence_level(confidence_score),
+                    "framework_context": framework_context.get('frameworks', []),
                 })
                 findings.append(rf)
 
         # Phase 4: Deep (L2) - Taint Analysis (Enhanced)
         taint_rules = [r for r in filtered_rules if r.get('mode') == 'taint']
         for rule in taint_rules:
+            # Mandatory validation: taint rules MUST have sources and sinks
+            if not rule.get('pattern-sources') or not rule.get('pattern-sinks'):
+                print(f"[WARN] Taint rule {rule.get('id')} missing sources or sinks, skipping")
+                continue
+            
             # 1. Identify all components
             sources = []
             for src_block in rule.get('pattern-sources', []):
@@ -107,27 +154,60 @@ class EngineV3:
             for san_block in rule.get('pattern-sanitizers', []):
                 sanitizers.extend(self.matcher.find_nodes(san_block, tree.root_node, content))
             
+            # Mandatory detection model: must have both source and sink
             if not sources or not sinks:
                 continue
                 
-            # 2. Run analysis
+            # 2. Run analysis with language and vulnerability type
             propagators = rule.get('pattern-propagators', [])
+            vulnerability_type = self._get_vulnerability_type(rule)
+            
             taint_findings = self.taint_engine.analyze_flow(
                 tree, sources, sinks, sanitizers, 
                 propagators=propagators, 
                 matcher=self.matcher, 
-                content=content
+                content=content,
+                language=language,
+                vulnerability_type=vulnerability_type
             )
             
-            # 3. Process findings
+            # 3. Process findings with confidence scoring
             for tf in taint_findings:
+                # Enrich with context
+                tf = self.context_filter.enrich_finding_context(tf, content, language)
+                tf = self.reachability_analyzer.enrich_finding_with_reachability(tf, tree)
+                
+                # Check if should be filtered
+                should_filter, filter_reason = self.context_filter.should_filter_finding(tf, content, language)
+                if should_filter:
+                    continue
+                
+                # Calculate confidence score for taint findings
+                context_data = {
+                    'is_test_code': tf.get('context', {}).get('is_test_code', False),
+                    'is_reachable': tf.get('is_reachable', True),
+                    'in_comment': tf.get('context', {}).get('in_comment', False),
+                    'framework_protection': self.framework_detector.should_reduce_confidence(
+                        framework_context, vulnerability_type
+                    ),
+                }
+                
+                confidence_score = self.confidence_calc.calculate_confidence(tf, rule, context_data)
+                
+                # Filter by minimum confidence
+                if not self.confidence_calc.should_report(confidence_score, self.min_confidence):
+                    continue
+                
                 tf.update({
                     "rule_id": rule['id'],
                     "severity": rule['severity'],
                     "file_path": file_path,
                     "message": rule.get('message', ''),
                     "phase": "taint",
-                    "confidence": rule.get('metadata', {}).get('confidence', 'HIGH')
+                    "confidence_score": confidence_score,
+                    "confidence_level": self.confidence_calc.get_confidence_level(confidence_score),
+                    "framework_context": framework_context.get('frameworks', []),
+                    "vulnerability_type": vulnerability_type,
                 })
                 # Add line info if missing (TaintEngine should provide it)
                 if 'line' not in tf:
@@ -254,3 +334,24 @@ class EngineV3:
                 seen.add(key)
                 deduped.append(f)
         return deduped
+    
+    def _get_vulnerability_type(self, rule: Dict) -> str:
+        """Extract vulnerability type from rule."""
+        rule_id = rule.get('id', '').lower()
+        
+        # Map common patterns to vulnerability types
+        if 'sql' in rule_id or 'sqli' in rule_id:
+            return 'sql'
+        elif 'xss' in rule_id or 'cross-site' in rule_id:
+            return 'xss'
+        elif 'command' in rule_id or 'cmd' in rule_id or 'os-injection' in rule_id:
+            return 'command'
+        elif 'path' in rule_id or 'traversal' in rule_id:
+            return 'path'
+        elif 'csrf' in rule_id:
+            return 'csrf'
+        elif 'deserial' in rule_id:
+            return 'deserialization'
+        else:
+            # Check metadata
+            return rule.get('metadata', {}).get('vulnerability_type', 'unknown')
