@@ -10,6 +10,17 @@ A powerful command-line tool for scanning source code to detect security vulnera
 - 📊 **Rich Security Reports**: Includes confidence scores, secure code examples, and auto-fix suggestions
 - 🚀 **Fast & Rule-Driven**: Extensible YAML-based rule DSL for rapid custom rule development
 - 📈 **Standard Mapping**: Rules mapped to OWASP, CWE, ASVS, MITRE, and NIST
+- 📖 **Full Documentation**: Comprehensive guides available in the [`docs/`](file:///c:/Code/SecureCodeX-CLI/docs/INDEX.md) directory
+
+## 📄 Documentation
+
+For in-depth information about SecureCodeX-CLI, please refer to the following guides:
+
+- **[Main Documentation Index](file:///c:/Code/SecureCodeX-CLI/docs/INDEX.md)**
+- **[CLI Reference Guide](file:///c:/Code/SecureCodeX-CLI/docs/CLI_REFERENCE.md)**
+- **[Engine V3 Deep Dive](file:///c:/Code/SecureCodeX-CLI/docs/ENGINE_V3.md)**
+- **[Custom Rules Guide](file:///c:/Code/SecureCodeX-CLI/docs/RULES_GUIDE.md)**
+- **[Architecture Overview](file:///c:/Code/SecureCodeX-CLI/docs/ARCHITECTURE.md)**
 
 ## Installation
 
