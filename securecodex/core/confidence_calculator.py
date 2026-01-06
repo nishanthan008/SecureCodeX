@@ -82,8 +82,8 @@ class ConfidenceCalculator:
         # Apply context adjustments
         score = self._apply_context_adjustments(score, finding, context)
         
-        # Ensure score is within bounds
-        return max(0, min(100, score))
+        # Ensure score is within bounds (10-100 range as requested)
+        return max(10, min(100, score))
     
     def _calculate_taint_confidence(
         self, 

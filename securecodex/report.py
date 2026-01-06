@@ -169,7 +169,7 @@ class PDFReportGenerator:
                             file_display = os.path.relpath(finding.file_path, scan.scan_path)
                         
                         # Confidence string
-                        conf_label = f" (Confidence: {finding.confidence_score*100:.0f}%)" if finding.confidence_score else ""
+                        conf_label = f" (Confidence: {finding.confidence_score:.0f}%)" if finding.confidence_score else ""
                         
                         # Formatted Standards
                         standards = []
