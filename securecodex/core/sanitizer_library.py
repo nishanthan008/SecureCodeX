@@ -144,6 +144,14 @@ class SanitizerLibrary:
                         'description': 'Validation check for numeric strings'
                     },
                 ],
+                'secrets': [
+                    {
+                        'pattern': 'os.environ.get(',
+                        'safe_when': 'env_var',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'Using environment variables instead of hardcoded secrets'
+                    }
+                ]
             },
             'javascript': {
                 'sql': [
@@ -197,6 +205,18 @@ class SanitizerLibrary:
                         'effectiveness': SanitizerEffectiveness.STRONG,
                         'description': 'innerText is safe (no HTML parsing)'
                     },
+                    {
+                        'pattern': 'encodeURIComponent(',
+                        'safe_when': 'always',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'URL component encoding'
+                    },
+                    {
+                        'pattern': 'validator.isEmail(',
+                        'safe_when': 'validation',
+                        'effectiveness': SanitizerEffectiveness.MEDIUM,
+                        'description': 'Type validation (email)'
+                    }
                 ],
                 'command': [
                     {
@@ -292,6 +312,48 @@ class SanitizerLibrary:
                         'description': 'PHP HTML entities encoding'
                     },
                 ],
+            },
+            'go': {
+                'sql': [
+                    {
+                        'pattern': 'db.Query(',
+                        'safe_when': 'parameterized',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'Go sql package parameterized query'
+                    }
+                ],
+                'xss': [
+                    {
+                        'pattern': 'html/template',
+                        'safe_when': 'always',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'Go html/template auto-escaping'
+                    },
+                    {
+                        'pattern': 'url.QueryEscape(',
+                        'safe_when': 'always',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'Go URL query escaping'
+                    }
+                ]
+            },
+            'csharp': {
+                'xss': [
+                    {
+                        'pattern': 'HttpUtility.HtmlEncode(',
+                        'safe_when': 'always',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'ASP.NET HTML encoding'
+                    }
+                ],
+                'sql': [
+                    {
+                        'pattern': 'SqlParameter',
+                        'safe_when': 'always',
+                        'effectiveness': SanitizerEffectiveness.STRONG,
+                        'description': 'ADO.NET SQL parameters'
+                    }
+                ]
             },
         }
     

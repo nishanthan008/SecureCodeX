@@ -153,23 +153,31 @@ class ConfidenceCalculator:
     ) -> int:
         """Apply context-based adjustments to confidence score."""
         
-        # Reduce confidence for test code
-        if context.get('is_test_code', False):
-            score = int(score * 0.5)  # 50% reduction
-        
-        # Reduce confidence for unreachable code
-        if context.get('is_reachable', True) is False:
-            score = int(score * 0.3)  # 70% reduction
-        
-        # Reduce confidence for commented code
-        if context.get('in_comment', False):
-            score = int(score * 0.2)  # 80% reduction
-        
-        # Increase confidence if framework protections are absent
-        if context.get('framework_protection', False) is False:
+        # 1. Multi-Engine Boost (+10)
+        # If both Pattern (Structural) and Taint analysis confirmed it
+        if finding.get('phase') == 'taint' and finding.get('pattern_confirmed', False):
             score = min(100, score + 10)
+
+        # 2. Reachability Boost (+15)
+        if context.get('is_reachable', True):
+            score = min(100, score + 15)
+        else:
+            # Major reduction for unreachable code
+            score = int(score * 0.3)
+
+        # 3. Test Code Reduction (50% reduction)
+        if context.get('is_test_code', False):
+            score = int(score * 0.5)
         
-        # Increase confidence for known CVE patterns
+        # 4. Commented Code Reduction (80% reduction)
+        if context.get('in_comment', False):
+            score = int(score * 0.2)
+        
+        # 5. Framework Protection (Reduction)
+        if context.get('framework_protection', False):
+            score = max(0, score - 20)
+        
+        # 6. CVE Pattern Boost (+15)
         if finding.get('cve_id'):
             score = min(100, score + 15)
         

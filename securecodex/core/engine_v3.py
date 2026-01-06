@@ -14,6 +14,7 @@ from .confidence_calculator import ConfidenceCalculator
 from .framework_detector import FrameworkDetector
 from .context_filter import ContextFilter
 from .reachability_analyzer import ReachabilityAnalyzer
+from .findings_processor import FindingsProcessor
 
 class EngineV3:
     """
@@ -32,6 +33,7 @@ class EngineV3:
         self.framework_detector = FrameworkDetector()
         self.context_filter = ContextFilter()
         self.reachability_analyzer = ReachabilityAnalyzer()
+        self.findings_processor = FindingsProcessor()
         
         self.min_confidence = min_confidence  # Minimum confidence level to report
         self.rules = self.dsl_parser.load_rules()
@@ -216,7 +218,8 @@ class EngineV3:
                     tf['snippet'] = tf['sink'].text.decode('utf8')
                 findings.append(tf)
 
-        return findings
+        # Phase 5: Post-Processing & Enrichment
+        return self.findings_processor.normalize_findings(findings)
 
     def _fallback_regex_scan(self, content: str, rules: List[Dict], file_path: str) -> List[Dict]:
         """Simple regex-based scan for files where AST parsing failed or language is generic."""
