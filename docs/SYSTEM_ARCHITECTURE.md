@@ -2,8 +2,13 @@
 
 This document outlines the system architecture of **SecureCodeX-CLI**, detailing its layering, component interactions, and technology stack.
 
-## 1. Professional Architecture Visual
-![SecureCodeX Professional Architecture Diagram](/C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_proper_architecture_diagram_1767700192026.png)
+## 1. Professional Architecture Visuals
+
+````carousel
+![SecureCodeX Enterprise System Architecture](/C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_system_stack_diagram_1767700773222.png)
+<!-- slide -->
+![SecureCodeX Professional Architecture Flow](/C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_proper_architecture_diagram_1767700192026.png)
+````
 
 ---
 
