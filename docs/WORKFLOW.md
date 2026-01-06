@@ -1,5 +1,7 @@
 # SecureCodeX-CLI Professional Workflow & Architecture
 
+![SecureCodeX Professional Architecture Diagram](file:///C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_architecture_diagram_1767699674874.png)
+
 This document provides a technical deep-dive into the SecureCodeX-CLI architecture, scanning pipeline, and data flow mechanisms.
 
 ## 1. High-Level System Architecture
