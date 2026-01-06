@@ -6,40 +6,19 @@ This document provides a technical deep-dive into the SecureCodeX-CLI architectu
 
 ## 1. High-Level System Architecture
 
-The following diagram illustrates the interaction between the CLI user interface, the orchestration engine, and the core analysis components.
+![SecureCodeX Enterprise System Architecture](/C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_system_stack_diagram_1767700773222.png)
 
-```mermaid
-graph TD
-    User["CLI User / CI Pipeline"] -- "securecodex scan" --> CLI["CLI Orchestrator"]
-    
-    subgraph Core ["Engine V3: Hybrid Multi-Phase Core"]
-        CLI --> Orchestrator["Engine V3 Orchestrator"]
-        Orchestrator --> L0["L0: Keyword-Based Filter"]
-        Orchestrator --> AST["AST Parser (C/Python/JS/Go)"]
-        Orchestrator --> L1["L1: Structural Pattern Matcher"]
-        Orchestrator --> L2["L2: Inter-Procedural Taint Engine"]
-    end
-    
-    subgraph PostProcessing ["Enhanced Post-Processing Layer"]
-        L1 & L2 --> Findings["Raw Findings"]
-        Findings --> Processor["Findings Processor (SCB Logic)"]
-        Processor --> Sanitizer["Sanitizer Context Check"]
-        Processor --> Confidence["Scoring Model (0-100)"]
-    end
-    
-    subgraph Storage ["Persistence & Reporting"]
-        Confidence --> DB[("SQLite Storage")]
-        DB --> Report["PDF/JSON Generator"]
-    end
-    
-    Report --> User
-    
-    style Core fill:#f0f8ff,stroke:#2563eb,stroke-width:2px
-    style PostProcessing fill:#fef9c3,stroke:#eab308,stroke-width:2px
-    style Storage fill:#f1f5f9,stroke:#475569,stroke-width:2px
-```
+---
 
-## 2. Engine V3: 5-Phase Analysis Pipeline
+## 2. CLI Scanning Lifecycle (User Flow)
+
+The following diagram illustrates the end-to-end flow of a scan operation, from the initial CLI command through analysis to the final reporting output.
+
+![SecureCodeX CLI Scan Flow](/C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_cli_scan_flow_diagram_1767702082846.png)
+
+---
+
+## 3. Engine V3: 5-Phase Analysis Pipeline
 
 SecureCodeX employs a high-accuracy, multi-stage detection pipeline to balance performance and precision.
 
@@ -64,7 +43,7 @@ flowchart LR
 - **Phase 4 (L2 Taint Analysis)**: Deep data-flow tracking from source (user input) to sink (dangerous function).
 - **Phase 5 (Post-Processing)**: Severity normalization, metadata injection (CWE/OWASP), and false-positive reduction via context analysis.
 
-## 3. Taint Analysis Lifecycle
+## 4. Taint Analysis Lifecycle
 
 The following sequence diagram shows how data flow is verified across the system.
 
@@ -86,7 +65,7 @@ sequenceDiagram
     C-->>E: Confidence Score (0-100)
 ```
 
-## 4. Key Component Responsibilities
+## 5. Key Component Responsibilities
 
 | Component | Responsibility |
 | :--- | :--- |
