@@ -8,6 +8,7 @@ Welcome to the official documentation for **SecureCodeX-CLI**, an enterprise-gra
 - **[Engine V3 (AST & Taint)](file:///c:/Code/SecureCodeX-CLI/docs/ENGINE_V3.md)**: Deep dive into the structural analysis and data flow engine.
 - **[Rules Guide](file:///c:/Code/SecureCodeX-CLI/docs/RULES_GUIDE.md)**: How to write and customize security rules using our YAML DSL.
 - **[Architecture Overview](file:///c:/Code/SecureCodeX-CLI/docs/ARCHITECTURE.md)**: Technical breakdown of the tool's internal workings.
+- **[System Architecture](file:///c:/Code/SecureCodeX-CLI/docs/SYSTEM_ARCHITECTURE.md)**: Formal specification of layers, tech stack, and components.
 - **[Visual Workflow Guide](file:///c:/Code/SecureCodeX-CLI/docs/WORKFLOW.md)**: Professional diagrams of the system and analysis pipeline.
 
 ## 🛠 Key Features
