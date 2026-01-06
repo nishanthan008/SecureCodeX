@@ -1,6 +1,6 @@
 # SecureCodeX-CLI Professional Workflow & Architecture
 
-![SecureCodeX Professional Architecture Diagram](file:///C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_architecture_diagram_1767699674874.png)
+![SecureCodeX Professional Architecture Diagram](/C:/Users/Hp/.gemini/antigravity/brain/428078b7-a8ec-4950-8461-20dc5a1cfd82/securecodex_proper_architecture_diagram_1767700192026.png)
 
 This document provides a technical deep-dive into the SecureCodeX-CLI architecture, scanning pipeline, and data flow mechanisms.
 
@@ -10,29 +10,33 @@ The following diagram illustrates the interaction between the CLI user interface
 
 ```mermaid
 graph TD
-    User["CLI User / CI Pipeline"] -- "Command/Config" --> CLI["CLI Orchestrator (scans.py/main.py)"]
+    User["CLI User / CI Pipeline"] -- "securecodex scan" --> CLI["CLI Orchestrator"]
     
-    subgraph Core ["Scanning Core (Engine V3)"]
-        CLI -- "Scan Request" --> Orchestrator["Engine V3 Orchestrator"]
-        Orchestrator -- "Rules" --> DSL["DSL Parser (YAML)"]
-        Orchestrator -- "Pre-filter" --> L0["L0: Grep-based Filter"]
-        Orchestrator -- "Parsing" --> AST["AST Parser (Tree-Sitter)"]
-        Orchestrator -- "Pattern Match" --> L1["L1: Structural Matcher"]
-        Orchestrator -- "Data Flow" --> L2["L2: Taint Analysis Engine"]
+    subgraph Core ["Engine V3: Hybrid Multi-Phase Core"]
+        CLI --> Orchestrator["Engine V3 Orchestrator"]
+        Orchestrator --> L0["L0: Keyword-Based Filter"]
+        Orchestrator --> AST["AST Parser (C/Python/JS/Go)"]
+        Orchestrator --> L1["L1: Structural Pattern Matcher"]
+        Orchestrator --> L2["L2: Inter-Procedural Taint Engine"]
     end
     
-    subgraph Enhancement ["Logic Enhancement Layer"]
-        L2 -- "Raw Findings" --> Processor["Findings Processor (SCB Logic)"]
-        Processor -- "Context" --> Sanitizer["Sanitizer Library"]
-        Processor -- "Scoring" --> Confidence["Confidence Calculator"]
+    subgraph PostProcessing ["Enhanced Post-Processing Layer"]
+        L1 & L2 --> Findings["Raw Findings"]
+        Findings --> Processor["Findings Processor (SCB Logic)"]
+        Processor --> Sanitizer["Sanitizer Context Check"]
+        Processor --> Confidence["Scoring Model (0-100)"]
     end
     
-    subgraph Data ["Persistence & Output"]
-        Confidence -- "Filtered Findings" --> DB["SQLite (findings.db)"]
-        DB -- "Export" --> Report["PDF/JSON Generator"]
+    subgraph Storage ["Persistence & Reporting"]
+        Confidence --> DB[("SQLite Storage")]
+        DB --> Report["PDF/JSON Generator"]
     end
     
     Report --> User
+    
+    style Core fill:#f0f8ff,stroke:#2563eb,stroke-width:2px
+    style PostProcessing fill:#fef9c3,stroke:#eab308,stroke-width:2px
+    style Storage fill:#f1f5f9,stroke:#475569,stroke-width:2px
 ```
 
 ## 2. Engine V3: 5-Phase Analysis Pipeline
