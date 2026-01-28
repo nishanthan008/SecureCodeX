@@ -65,8 +65,15 @@ class DSLParser:
                 # Filter out anything that starts with $ or is too short
                 literals = re.findall(r'[a-zA-Z0-9_\.]{4,}', block)
                 for lit in literals:
-                    if not lit.startswith('$') and lit not in ['true', 'false', 'None', 'self']:
+                    if not lit.startswith('$') and lit not in ['true', 'false', 'None', 'self', 'pattern', 'regex']:
                         keywords.add(lit)
+                
+                # Also extract potential keywords from pattern-regex if they are long enough
+                if 'pattern-regex' in block:
+                    regex_literals = re.findall(r'[a-zA-Z]{5,}', str(block))
+                    for rlit in regex_literals:
+                        if len(rlit) >= 6: # Only high-entropy literals
+                            keywords.add(rlit)
             elif isinstance(block, dict):
                 for k, v in block.items():
                     if k in ['pattern', 'pattern-inside', 'pattern-not-inside', 'pattern-regex', 'pattern-either', 'patterns', 'pattern-not']:

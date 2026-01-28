@@ -125,49 +125,64 @@ class Matcher:
         return matches
 
     def _simple_text_match(self, pattern_str: str, node: Any, bindings: Dict) -> bool:
-        """Fallback for now: simple substring or regex match with metavariable support."""
-        # Normalize whitespace in pattern and node text
+        """
+        Improved structural matching with metavariable consistency and robust ellipsis.
+        """
+        # Normalize whitespace
         pattern_norm = re.sub(r'\s+', ' ', pattern_str.strip())
         node_text = node.text.decode('utf8')
         node_norm = re.sub(r'\s+', ' ', node_text.strip())
         
-        # Convert pattern with $VAR to regex
+        # 1. Handle ellipsis (...) with context-aware regex
+        # We use non-greedy matching but try to respect obvious boundaries like commas or semicolons
+        # if the ellipsis is within a list or block.
         regex_pattern = re.escape(pattern_norm)
-        regex_pattern = regex_pattern.replace(r'\.\.\.', r'.*?') # Ellipsis
         
-        # Handle $VAR (captured metavariables)
-        # Search for $VAR that are not part of other words
-        vars_found = re.findall(r'\$[A-Z_]+', pattern_norm)
+        # Replace escaped ellipsis with a more robust pattern
+        # [\s\S]*? is non-greedy "everything" including newlines
+        regex_pattern = regex_pattern.replace(r'\.\.\.', r'[\s\S]*?')
+        
+        # 2. Identify $VAR metavariables
+        vars_found = re.findall(r'\$[A-Z_0-9]+', pattern_norm)
         vars_to_replace = sorted(list(set(vars_found)), key=len, reverse=True)
         
+        # 3. Build regex with named groups for metavariables
         for v in vars_to_replace:
-            # If a variable appears multiple times, we need unique groups or a way to handle it
-            # For now, let's use a counter for each substitution
-            count = 0
-            while re.search(re.escape(v), regex_pattern):
-                group_name = f"{v[1:]}_{count}"
+            # Check if this variable is already bound in a parent block
+            if v in bindings:
+                # If bound, we must match the EXACT same content (escaped for regex)
+                val = bindings[v]
+                text_val = val.text.decode('utf8') if hasattr(val, 'text') else str(val)
+                regex_pattern = regex_pattern.replace(re.escape(v), re.escape(text_val))
+            else:
+                # If not bound, create a named capture group
+                # We use a unique suffix to avoid name collisions if the same var appears multiple times
+                # (though for consistency, they should match the same thing, we'll verify this post-match)
+                group_name = f"var_{v[1:]}"
+                # If there are multiple occurrences of the same $VAR in the pattern, 
+                # we need to capture them and then check they are equal.
+                # Here we handle the first occurrences.
                 regex_pattern = regex_pattern.replace(re.escape(v), f'(?P<{group_name}>.*?)', 1)
-                count += 1
+                # Subsequent occurrences should match the first one using backreferences
+                regex_pattern = regex_pattern.replace(re.escape(v), f'(?P={group_name})')
 
-        # Try matching against normalized node text or original
-        match = re.search(regex_pattern, node_norm, re.IGNORECASE)
+        # 4. Perform the match
+        # We try normalized first, then original for complex multi-line matches
+        match = re.fullmatch(regex_pattern, node_norm, re.IGNORECASE | re.DOTALL)
         if not match:
-            # Try original text in case formatting matters
-            match = re.search(regex_pattern, node_text, re.IGNORECASE | re.DOTALL)
+            # Try original text
+            match = re.fullmatch(regex_pattern, node_text, re.IGNORECASE | re.DOTALL)
 
         if match:
-            # Map index groups back to original variables
-            # For each original variable, we take the FIRST match as the representative binding
+            # Update bindings with new captured variables
             for v in vars_to_replace:
-                # Search for all indexed groups for this variable
-                for i in range(10): # Assume max 10 repetitions
-                    group = f"{v[1:]}_{i}"
+                if v not in bindings:
                     try:
-                        bindings[v] = match.group(group)
-                        break # Take the first one
+                        bindings[v] = match.group(f"var_{v[1:]}")
                     except (IndexError, KeyError):
                         pass
             return True
+            
         return False
 
     def _find_regex_matches(self, regex: str, root: Any, content_bytes: bytes) -> List[Dict[str, Any]]:

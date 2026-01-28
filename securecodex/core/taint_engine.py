@@ -32,6 +32,15 @@ class TaintEngine:
                     path, sanitizers_nodes or [], language, vulnerability_type
                 )
                 
+                # False Positive Reduction: Constant Propagation check
+                # Many rules should only trigger if the input is variable (tainted) 
+                # and not a hardcoded constant.
+                is_constant = self._is_constant_value(path[0])
+                if is_constant:
+                    # If the source is a literal string/number, it's often a false positive
+                    # for injection-style vulnerabilities.
+                    continue
+
                 findings.append({
                     "source": path[0],
                     "sink": path[-1],
@@ -43,6 +52,24 @@ class TaintEngine:
                 })
         
         return findings
+
+    def _is_constant_value(self, node: Any) -> bool:
+        """Check if a node represents a constant literal value."""
+        constant_types = [
+            'string', 'string_literal', 'number', 'integer', 'float', 
+            'boolean', 'true', 'false', 'none', 'null'
+        ]
+        # Check node type
+        if node.type in constant_types:
+            return True
+        
+        # Check if it's an assignment of a constant
+        if node.type in ['assignment', 'assign']:
+            rhs = node.child_by_field_name('right') or node.child_by_field_name('value')
+            if rhs and rhs.type in constant_types:
+                return True
+                
+        return False
 
     def _build_dfg(self, tree: Any, propagators: List[Dict] = None, matcher: Any = None, content: str = "") -> (Dict[int, Set[int]], Dict[int, Any]):
         """
