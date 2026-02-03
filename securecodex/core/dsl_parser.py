@@ -12,17 +12,38 @@ class DSLParser:
     def __init__(self, rules_dir: str):
         self.rules_dir = rules_dir
 
-    def load_rules(self) -> List[Dict[str, Any]]:
-        """Load all .yaml rules from the specified directory."""
+    def load_rules(self, selected_languages: List[str] = None) -> List[Dict[str, Any]]:
+        """Load all .yaml rules from the specified directory, optionally filtered by language."""
         all_rules = []
         if not os.path.exists(self.rules_dir):
             return []
+        
+        rules_loaded_count = 0
+        rules_filtered_count = 0
             
         for root, _, files in os.walk(self.rules_dir):
             for file in files:
                 if file.endswith(('.yaml', '.yml')):
                     rules = self._parse_file(os.path.join(root, file))
+                    
+                    # Filter by language if specified
+                    if selected_languages:
+                        filtered_rules = []
+                        for rule in rules:
+                            rule_langs = [lang.lower() for lang in rule.get('languages', ['all'])]
+                            # Include rule if it matches any selected language or is marked as 'all'
+                            if 'all' in rule_langs or any(lang in selected_languages for lang in rule_langs):
+                                filtered_rules.append(rule)
+                            else:
+                                rules_filtered_count += 1
+                        rules = filtered_rules
+                    
+                    rules_loaded_count += len(rules)
                     all_rules.extend(rules)
+        
+        if selected_languages:
+            print(f"[INFO] Loaded {rules_loaded_count} rules (filtered out {rules_filtered_count} rules for other languages)")
+        
         return all_rules
 
     def _parse_file(self, file_path: str) -> List[Dict[str, Any]]:
@@ -47,11 +68,23 @@ class DSLParser:
                         rule.setdefault('languages', ['all'])
                         # Pre-calculate keywords for L0 filtering
                         rule['keywords'] = self._extract_keywords(rule)
+                        
+                        # Normalize source/sink keys for EngineV3 compatibility
+                        if 'source' in rule and 'pattern-sources' not in rule:
+                            sources = rule['source'] if isinstance(rule['source'], list) else [rule['source']]
+                            rule['pattern-sources'] = [s if isinstance(s, dict) else {'pattern': s} for s in sources]
+                        if 'sink' in rule and 'pattern-sinks' not in rule:
+                            sinks = rule['sink'] if isinstance(rule['sink'], list) else [rule['sink']]
+                            rule['pattern-sinks'] = [s if isinstance(s, dict) else {'pattern': s} for s in sinks]
+                        if 'sanitizer' in rule and 'pattern-sanitizers' not in rule:
+                            sanitizers = rule['sanitizer'] if isinstance(rule['sanitizer'], list) else [rule['sanitizer']]
+                            rule['pattern-sanitizers'] = [s if isinstance(s, dict) else {'pattern': s} for s in sanitizers]
+                            
                         all_file_rules.append(rule)
                         
                 return all_file_rules
         except Exception as e:
-            # print(f"Error parsing rule file {file_path}: {e}")
+            print(f"[ERROR] Error parsing rule file {file_path}: {e}")
             return []
 
     def _extract_keywords(self, rule: Dict[str, Any]) -> List[str]:

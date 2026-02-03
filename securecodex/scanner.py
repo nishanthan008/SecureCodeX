@@ -9,15 +9,19 @@ from .detectors.dependency import DependencyDetector
 from .detectors.advanced_pattern_detector import AdvancedPatternDetector
 from .detectors.multi_language_ast_detector import MultiLanguageASTDetector
 from .scanner_config import ScannerConfig
+from .core.engine_v3 import EngineV3
+from .core.findings_processor import FindingsProcessor
 
 class CLIScanner:
     """Standalone scanner for CLI usage"""
     
-    def __init__(self, db: Session, scan_id: int, scan_path: str, verbose=False):
+    def __init__(self, db: Session, scan_id: int, scan_path: str, verbose=False, selected_languages: List[str] = None, skip_dependencies: bool = True):
         self.db = db
         self.scan_id = scan_id
         self.scan_path = scan_path
         self.verbose = verbose
+        self.selected_languages = selected_languages
+        self.skip_dependencies = skip_dependencies  # Skip dependency scanning by default
         
         # Initialize detectors
         self.pattern_detector = PatternDetector()
@@ -26,6 +30,11 @@ class CLIScanner:
         # Initialize advanced detectors
         self.advanced_detector = AdvancedPatternDetector()
         self.ast_detector = MultiLanguageASTDetector()
+        
+        # Initialize unified security engine (v3) with language filtering
+        rules_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'rules')
+        self.engine_v3 = EngineV3(rules_dir=rules_dir, selected_languages=selected_languages)
+        self.findings_processor = FindingsProcessor()
         
         # Statistics
         self.stats = {
@@ -171,8 +180,14 @@ class CLIScanner:
             # Run AST detector
             findings.extend(self.ast_detector.scan_content(content, file_path))
             
-            # Run dependency detector
-            findings.extend(self.dependency_detector.scan_file(file_path))
+            # Run EngineV3 (Unified structural & taint analysis)
+            v3_findings = self.engine_v3.scan_file(file_path)
+            processed_v3 = self.findings_processor.normalize_findings(v3_findings)
+            findings.extend(processed_v3)
+            
+            # Run dependency detector (skip if flag is set)
+            if not self.skip_dependencies:
+                findings.extend(self.dependency_detector.scan_file(file_path))
             
             self.stats['files_scanned'] += 1
             
@@ -198,10 +213,18 @@ class CLIScanner:
                     description=f_data.get('description', ''),
                     severity=f_data.get('severity', models.Severity.INFO.value),
                     file_path=f_data.get('file_path', ''),
-                    line_number=f_data.get('line_number', 0),
-                    code_snippet=f_data.get('code_snippet', ''),
+                    line_number=f_data.get('line_number') or f_data.get('line', 0),
+                    code_snippet=f_data.get('code_snippet') or f_data.get('snippet', ''),
                     cwe_id=f_data.get('cwe_id', None),
-                    remediation=f_data.get('remediation', '')
+                    remediation=f_data.get('remediation', ''),
+                    owasp_id=f_data.get('owasp_id'),
+                    confidence_score=f_data.get('confidence_score', 50),
+                    confidence_level=f_data.get('confidence_level', 'MEDIUM'),
+                    detection_method=f_data.get('phase', 'Pattern'),
+                    evidence_trace=f_data.get('evidence_trace'),
+                    vulnerability_type=f_data.get('vulnerability_type'),
+                    is_reachable=1 if f_data.get('is_reachable', True) else 0,
+                    is_test_code=1 if f_data.get('is_test_code', False) else 0
                 )
                 self.db.add(finding)
             

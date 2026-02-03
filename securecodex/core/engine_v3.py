@@ -22,11 +22,12 @@ class EngineV3:
     Orchestrates the multi-phase analysis process.
     """
     
-    def __init__(self, rules_dir: str, db_path: str = ".securecodex.db", min_confidence: str = 'MEDIUM'):
+    def __init__(self, rules_dir: str, db_path: str = ".securecodex.db", min_confidence: str = 'MEDIUM', selected_languages: List[str] = None):
         self.parser_manager = ParserManager()
         self.matcher = Matcher(self.parser_manager)
         self.dsl_parser = DSLParser(rules_dir)
         self.taint_engine = TaintEngine(self.parser_manager)
+        self.selected_languages = selected_languages
         
         # Initialize new analysis modules
         self.confidence_calc = ConfidenceCalculator()
@@ -36,7 +37,7 @@ class EngineV3:
         self.findings_processor = FindingsProcessor()
         
         self.min_confidence = min_confidence  # Minimum confidence level to report
-        self.rules = self.dsl_parser.load_rules()
+        self.rules = self.dsl_parser.load_rules(selected_languages=selected_languages)
         self.db = ScanDB(db_path)
         print(f"[INFO] EngineV3 initialized with {len(self.rules)} rules.")
         print(f"[INFO] Minimum confidence level: {min_confidence}")

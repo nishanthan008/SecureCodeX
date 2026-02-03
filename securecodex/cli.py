@@ -74,9 +74,16 @@ Examples:
         action='store_true',
         help='Keep the SQLite database after scan (for debugging)'
     )
+    scan_parser.add_argument(
+        '--languages',
+        type=str,
+        default=None,
+        help='Comma-separated list of languages to scan (e.g., python,javascript,java). Default: all languages'
+    )
     
     # Version command
     parser.add_argument('--version', action='version', version='SecureCodeX CLI 3.0.0 (Enterprise Evolution)')
+    
     
     # Sync command
     sync_parser = subparsers.add_parser('sync', help='Synchronize security rules from external repositories')
@@ -85,6 +92,33 @@ Examples:
         type=str,
         default='rules',
         help='Local directory to store rules. Default: rules'
+    )
+    
+    # SBOM command
+    sbom_parser = subparsers.add_parser('sbom', help='Generate Software Bill of Materials (SBOM) and scan dependencies')
+    sbom_parser.add_argument(
+        '--path',
+        type=str,
+        required=True,
+        help='Path to project directory to scan for dependencies'
+    )
+    sbom_parser.add_argument(
+        '--output',
+        type=str,
+        default='.',
+        help='Output directory for SBOM report. Default: current directory'
+    )
+    sbom_parser.add_argument(
+        '--format',
+        type=str,
+        choices=['json', 'cyclonedx', 'spdx'],
+        default='json',
+        help='SBOM output format. Default: json'
+    )
+    sbom_parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Enable verbose output'
     )
     
     args = parser.parse_args()
@@ -97,6 +131,8 @@ Examples:
         run_scan(args)
     elif args.command == 'sync':
         run_sync(args)
+    elif args.command == 'sbom':
+        run_sbom(args)
 
 def run_scan(args):
     """Run a security scan"""
@@ -148,8 +184,17 @@ def run_scan(args):
         if args.verbose:
             print(f"[NOTE] Created scan record with ID: {scan.id}\n")
         
-        # Run scanner
-        scanner = CLIScanner(db, scan.id, scan_path, verbose=args.verbose)
+        # Parse selected languages
+        selected_languages = None
+        if args.languages:
+            selected_languages = [lang.strip().lower() for lang in args.languages.split(',')]
+            print(f"[INFO] Scanning languages: {', '.join(selected_languages)}\n")
+        else:
+            print(f"[INFO] Scanning all languages\n")
+        
+        # Run scanner (skip dependencies by default for security scans)
+        scanner = CLIScanner(db, scan.id, scan_path, verbose=args.verbose, 
+                           selected_languages=selected_languages, skip_dependencies=True)
         scanner.run()
         
         # Generate reports
@@ -211,6 +256,83 @@ def run_sync(args):
     print(f"[INFO] Synchronizing rules to {rules_dir}...")
     syncer.sync_semgrep()
     print("\n[OK] Rule synchronization complete!\n")
+
+def run_sbom(args):
+    """Run SBOM scan"""
+    import json
+    from .sbom_scanner import SBOMScanner
+    
+    # Validate and normalize path
+    scan_path = os.path.abspath(args.path)
+    
+    if not os.path.exists(scan_path):
+        print(f"[ERROR] Path does not exist: {scan_path}")
+        sys.exit(1)
+    
+    # Create output directory if needed
+    output_dir = os.path.abspath(args.output)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Print banner
+    print("\n" + "="*60)
+    print("  SecureCodeX - SBOM Generator")
+    print("="*60)
+    print(f"Scan Path: {scan_path}")
+    print(f"Output Directory: {output_dir}")
+    print(f"Output Format: {args.format}")
+    print("="*60 + "\n")
+    
+    # Initialize database
+    db_manager = DatabaseManager()
+    db = db_manager.get_session()
+    
+    try:
+        # Create scan record
+        scan = models.Scan(
+            project_name=os.path.basename(scan_path),
+            scan_path=scan_path,
+            status=models.ScanStatus.PENDING.value,
+            start_time=datetime.now(datetime.UTC)
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+        
+        if args.verbose:
+            print(f"[NOTE] Created SBOM scan record with ID: {scan.id}\n")
+        
+        # Run SBOM scanner
+        sbom_scanner = SBOMScanner(db, scan.id, scan_path, verbose=args.verbose)
+        sbom_data = sbom_scanner.run()
+        
+        # Generate report
+        output_file = os.path.join(output_dir, f"sbom_{os.path.basename(scan_path)}.json")
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(sbom_data, f, indent=2)
+        
+        # Print summary
+        print("\n" + "="*60)
+        print(" SBOM SUMMARY")
+        print("="*60)
+        summary = sbom_data.get('summary', {})
+        print(f"Total Dependencies:       {summary.get('total_dependencies', 0)}")
+        print(f"Vulnerable Dependencies:  {summary.get('vulnerable_dependencies', 0)}")
+        print(f"  CRITICAL:               {summary.get('critical', 0)}")
+        print(f"  HIGH:                   {summary.get('high', 0)}")
+        print(f"  MEDIUM:                 {summary.get('medium', 0)}")
+        print(f"  LOW:                    {summary.get('low', 0)}")
+        print(f"Languages:                {', '.join(summary.get('languages', []))}")
+        print("="*60 + "\n")
+        
+        print(f"[OK] SBOM saved to: {output_file}\n")
+        
+    except Exception as e:
+        print(f"\n[ERROR] SBOM scan failed: {e}\n")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        db.close()
 
 def generate_json_report(db, scan_id, output_path):
     """Generate JSON report"""
