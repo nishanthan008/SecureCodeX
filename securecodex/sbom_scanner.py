@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from tqdm import tqdm
 from . import models
 from .detectors.dependency import DependencyDetector
+from .detectors.dependency_extractor import DependencyExtractor
 
 class SBOMScanner:
     """Dedicated SBOM and dependency scanner"""
@@ -19,6 +20,8 @@ class SBOMScanner:
         self.scan_path = scan_path
         self.verbose = verbose
         self.dependency_detector = DependencyDetector()
+        # Initialize extractor with vulnerable packages database
+        self.dependency_extractor = DependencyExtractor(self.dependency_detector.vulnerable_packages)
         
         # Dependency manifest file patterns
         self.dependency_patterns = {
@@ -58,19 +61,20 @@ class SBOMScanner:
                     if self.verbose:
                         print(f"\n[SCAN] {dep_file}")
                     
-                    findings = self.dependency_detector.scan_file(dep_file)
+                    # Extract ALL dependencies from this file
+                    extracted_deps = self.dependency_extractor.extract_all(dep_file)
                     
-                    # Process findings
-                    for finding in findings:
+                    # Add to all_dependencies list
+                    for dep in extracted_deps:
                         dep_info = {
                             'file': dep_file,
-                            'language': self._detect_language(dep_file),
-                            'finding': finding
+                            'language': dep.get('ecosystem', self._detect_language(dep_file)),
+                            'package': dep
                         }
                         all_dependencies.append(dep_info)
                         
                         # Track vulnerable dependencies
-                        if finding.get('severity') in ['CRITICAL', 'HIGH', 'MEDIUM']:
+                        if dep.get('vulnerable', False):
                             vulnerable_deps.append(dep_info)
                     
                     pbar.update(1)
@@ -137,19 +141,32 @@ class SBOMScanner:
     
     def _generate_sbom(self, all_dependencies: List[Dict], vulnerable_deps: List[Dict]) -> Dict[str, Any]:
         """Generate SBOM structure"""
-        # Count by severity
-        severity_counts = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'INFO': 0}
+        # Count vulnerable dependencies by severity (estimate based on known vulnerabilities)
+        severity_counts = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
         for dep in vulnerable_deps:
-            severity = dep['finding'].get('severity', 'INFO')
-            severity_counts[severity] = severity_counts.get(severity, 0) + 1
+            # Estimate severity - in production, query vulnerability database
+            severity_counts['HIGH'] += 1  # Default to HIGH for vulnerable packages
         
-        # Group by language
+        # Group by language/ecosystem
         by_language = {}
         for dep in all_dependencies:
             lang = dep['language']
             if lang not in by_language:
                 by_language[lang] = []
             by_language[lang].append(dep)
+        
+        # Create detailed package list
+        packages = []
+        for dep in all_dependencies:
+            pkg = dep['package']
+            packages.append({
+                'name': pkg.get('name'),
+                'version': pkg.get('version'),
+                'ecosystem': pkg.get('ecosystem'),
+                'purl': pkg.get('purl'),
+                'vulnerable': pkg.get('vulnerable', False),
+                'source_file': dep['file']
+            })
         
         sbom = {
             'sbom_version': '1.0',
@@ -165,9 +182,10 @@ class SBOMScanner:
                 'high': severity_counts['HIGH'],
                 'medium': severity_counts['MEDIUM'],
                 'low': severity_counts['LOW'],
-                'languages': list(by_language.keys())
+                'ecosystems': list(by_language.keys())
             },
-            'dependencies_by_language': by_language,
+            'packages': packages,
+            'dependencies_by_ecosystem': by_language,
             'vulnerable_dependencies': vulnerable_deps
         }
         
