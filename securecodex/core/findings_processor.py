@@ -101,6 +101,14 @@ class FindingsProcessor:
                     finding['owasp_id'] = owasp
                     break
                     
+        # Determine Name if not present
+        if not finding.get('name') or finding.get('name') == 'Unknown':
+            msg = finding.get('message', '')
+            if msg:
+                finding['name'] = msg.split('.')[0][:100]
+            else:
+                finding['name'] = rule_id.replace('-', ' ').title()
+
         return finding
 
     def apply_overrides(self, finding: Dict[str, Any]) -> Dict[str, Any]:
@@ -110,12 +118,12 @@ class FindingsProcessor:
         """
         file_path = finding.get('file_path', '').lower()
         
-        # Rule 1: Downgrade everything in 'test' or 'mock' folders to INFO or LOW
-        if 'test' in file_path or 'mock' in file_path or 'example' in file_path:
+        # Downgrade everything in 'mock' or 'example' folders
+        if 'mock' in file_path or 'example' in file_path:
             old_sev = finding['severity']
             if old_sev in ['CRITICAL', 'HIGH', 'MEDIUM']:
                 finding['severity'] = 'LOW'
-                finding['message'] = f"[TEST-CODE] {finding.get('message', '')} (Severity downgraded from {old_sev})"
+                finding['message'] = f"[EXAMPLE-CODE] {finding.get('message', '')} (Severity downgraded from {old_sev})"
                 finding['is_test_code'] = True
         
         # Rule 2: High Confidence secrets should be CRITICAL

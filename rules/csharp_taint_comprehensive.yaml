@@ -1,0 +1,120 @@
+rules:
+  # ============================================================================
+  # SQL INJECTION - C#
+  # ============================================================================
+  
+  - id: csharp-sqli-adonet
+    name: "ADO.NET SQL Injection"
+    description: "SQL injection via SqlCommand"
+    severity: CRITICAL
+    languages: [csharp]
+    mode: taint
+    pattern-sources:
+      - pattern: Request.QueryString[...]
+      - pattern: Request.Form[...]
+      - pattern: Request[...]
+    pattern-sinks:
+      - pattern: SqlCommand.ExecuteReader()
+      - pattern: SqlCommand.ExecuteNonQuery()
+      - pattern: SqlCommand.ExecuteScalar()
+    pattern-sanitizers:
+      - pattern: int.Parse(...)
+      - pattern: SqlParameter(...)
+    message: "SQL injection: use SqlParameter for parameterized queries"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: csharp-sqli-ef
+    name: "Entity Framework SQL Injection"
+    description: "SQL injection in EF raw queries"
+    severity: CRITICAL
+    languages: [csharp]
+    mode: taint
+    pattern-sources:
+      - pattern: Request.QueryString[...]
+      - pattern: Request.Form[...]
+    pattern-sinks:
+      - pattern: DbContext.Database.ExecuteSqlRaw(...)
+      - pattern: DbContext.Database.ExecuteSqlCommand(...)
+    pattern-sanitizers:
+      - pattern: FromSqlInterpolated(...)
+    message: "SQL injection: use FromSqlInterpolated() for parameterized queries"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # COMMAND INJECTION - C#
+  # ============================================================================
+
+  - id: csharp-command-injection
+    name: "C# Command Injection"
+    description: "Command injection via Process.Start"
+    severity: CRITICAL
+    languages: [csharp]
+    mode: taint
+    pattern-sources:
+      - pattern: Request.QueryString[...]
+      - pattern: Request.Form[...]
+    pattern-sinks:
+      - pattern: Process.Start(...)
+      - pattern: ProcessStartInfo.FileName = ...
+    message: "Command injection: validate input before Process.Start()"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  # ============================================================================
+  # XSS - C#
+  # ============================================================================
+
+  - id: csharp-xss
+    name: "XSS in ASP.NET"
+    description: "Cross-Site Scripting in ASP.NET"
+    severity: HIGH
+    languages: [csharp]
+    mode: taint
+    pattern-sources:
+      - pattern: Request.QueryString[...]
+      - pattern: Request.Form[...]
+    pattern-sinks:
+      - pattern: Response.Write(...)
+      - pattern: HttpResponse.Write(...)
+    pattern-sanitizers:
+      - pattern: HttpUtility.HtmlEncode(...)
+      - pattern: AntiXssEncoder.HtmlEncode(...)
+    message: "XSS: use HttpUtility.HtmlEncode() before rendering"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # PATH TRAVERSAL - C#
+  # ============================================================================
+
+  - id: csharp-path-traversal
+    name: "C# Path Traversal"
+    description: "Path traversal in file operations"
+    severity: HIGH
+    languages: [csharp]
+    mode: taint
+    pattern-sources:
+      - pattern: Request.QueryString[...]
+      - pattern: Request.Form[...]
+    pattern-sinks:
+      - pattern: File.ReadAllText(...)
+      - pattern: File.WriteAllText(...)
+      - pattern: FileStream(...)
+    pattern-sanitizers:
+      - pattern: Path.GetFileName(...)
+      - pattern: Path.GetFullPath(...)
+    message: "Path traversal: use Path.GetFileName() to sanitize paths"
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9

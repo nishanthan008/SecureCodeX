@@ -75,9 +75,11 @@ class EngineV3:
             
         language = self._detect_language(file_path)
         applicable_rules = self._get_applicable_rules(language)
+        print(f"DEBUG: Found {len(applicable_rules)} applicable rules for language '{language}'")
         
         # Phase 1: Filter (L0) - Fast regex pre-filter
         filtered_rules = self._pre_filter(content, applicable_rules)
+        print(f"DEBUG: {len(filtered_rules)} rules remain after L0 filter")
         if not filtered_rules:
             return []
 
@@ -140,7 +142,6 @@ class EngineV3:
         for rule in taint_rules:
             # Mandatory validation: taint rules MUST have sources and sinks
             if not rule.get('pattern-sources') or not rule.get('pattern-sinks'):
-                print(f"[WARN] Taint rule {rule.get('id')} missing sources or sinks, skipping")
                 continue
             
             # 1. Identify all components
@@ -159,8 +160,6 @@ class EngineV3:
             # Mandatory detection model: must have both source and sink
             if not sources or not sinks:
                 continue
-                
-            # 2. Run analysis with language and vulnerability type
             propagators = rule.get('pattern-propagators', [])
             vulnerability_type = self._get_vulnerability_type(rule)
             
@@ -260,22 +259,34 @@ class EngineV3:
 
     def _extract_all_patterns(self, block: Dict) -> List[str]:
         """Recursively extract all literal patterns/regexes from a rule block."""
+        if not isinstance(block, dict):
+            return []
+            
         patterns = []
-        if 'pattern' in block: patterns.append(block['pattern'])
-        if 'pattern-regex' in block: patterns.append(block['pattern-regex'])
-        if 'pattern-either' in block:
-            for p in block['pattern-either']:
-                patterns.extend(self._extract_all_patterns(p))
-        if 'patterns' in block:
-            for p in block['patterns']:
-                patterns.extend(self._extract_all_patterns(p))
-        if 'pattern-inside' in block:
+        if 'pattern' in block and block['pattern']: patterns.append(block['pattern'])
+        if 'pattern-regex' in block and block['pattern-regex']: patterns.append(block['pattern-regex'])
+        
+        # Helper to process lists of patterns
+        def process_list(key):
+            items = block.get(key)
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, str):
+                        patterns.append(item)
+                    elif isinstance(item, dict):
+                        patterns.extend(self._extract_all_patterns(item))
+
+        process_list('pattern-either')
+        process_list('patterns')
+        process_list('pattern-sources')
+        process_list('pattern-sinks')
+        process_list('pattern-sanitizers')
+        
+        if 'pattern-inside' in block and block['pattern-inside']:
             patterns.append(block['pattern-inside'])
-        if 'pattern-not' in block:
-            # We don't necessarily want to match on pattern-not in fallback, 
-            # but we could extract it if we wanted to avoid it.
-            pass
-        return list(set(patterns)) # Deduplicate
+
+        # Filter out anything that isn't a string (e.g. None from empty keys)
+        return list(set(p for p in patterns if isinstance(p, str)))
 
     def _get_all_files(self, path: str) -> List[str]:
         files = []

@@ -74,9 +74,6 @@ class ParserManager:
             except Exception as e:
                 print(f"Error loading grammar for {lang_name}: {e}")
                 
-        # If not found, we might need to build it (if source is available)
-        # For now, we return None and expect the user to have provided the libs
-        # Or we could provide a helper to download and build (out of scope for now)
         return None
 
     def parse(self, content: str, language_id: str) -> Optional[Any]:
@@ -142,8 +139,35 @@ class PythonNodeBridge:
             val = getattr(self.node, name)
             if isinstance(val, ast.AST):
                 return PythonNodeBridge(val, self.content, self)
+            elif isinstance(val, list):
+                # Return a virtual node that represents the list
+                return PythonListBridge(val, self.content, self, name)
         return None
 
-    def get_node_text(self, node: Any, content_bytes: bytes) -> str:
-        """Extract text from a node using the original content bytes."""
-        return content_bytes[node.start_byte:node.end_byte].decode("utf8")
+    @property
+    def id(self):
+        return id(self.node)
+
+class PythonListBridge:
+    """A virtual node to bridge Python AST lists (like call args) to Tree-sitter style children."""
+    def __init__(self, nodes, content, parent, type_name):
+        self._children = [PythonNodeBridge(n, content, parent) for n in nodes if isinstance(n, ast.AST)]
+        self.type = type_name
+        self.parent = parent
+        self.text = b"" 
+        self.start_point = (0, 0)
+        self.end_point = (0, 0)
+        if self._children:
+            self.start_point = self._children[0].start_point
+            self.end_point = self._children[-1].end_point
+
+    @property
+    def child_count(self):
+        return len(self._children)
+
+    def child(self, i):
+        return self._children[i]
+    
+    @property
+    def id(self):
+        return id(self)

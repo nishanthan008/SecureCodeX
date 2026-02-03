@@ -1,0 +1,204 @@
+rules:
+
+  # =========================================================
+  # A01: Broken Access Control (Client-side indicators)
+  # =========================================================
+  - id: html-hidden-field-sensitive
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "<input[^>]*type=[\"']hidden[\"'][^>]*(password|token|role|auth)[^>]*>"
+    message: "Sensitive data stored in hidden form fields. Client-side controls can be bypassed."
+    metadata:
+      cwe: CWE-522
+      owasp: A01:2021-Broken Access Control
+
+
+  # =========================================================
+  # A02: Cryptographic Failures
+  # =========================================================
+  - id: html-http-form-action
+    severity: HIGH
+    languages: [html]
+    pattern-regex: "<form[^>]*action=[\"']http://"
+    message: "Form submits data over HTTP instead of HTTPS."
+    metadata:
+      cwe: CWE-319
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: html-mixed-content
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "<(script|img|link|iframe)[^>]*src=[\"']http://"
+    message: "Mixed content detected. Insecure HTTP resource loaded on HTTPS page."
+    metadata:
+      cwe: CWE-319
+      owasp: A02:2021-Cryptographic Failures
+
+
+  # =========================================================
+  # A03: Injection (XSS – HTML level)
+  # =========================================================
+  - id: html-inline-event-handler
+    severity: HIGH
+    languages: [html]
+    pattern-regex: "on(click|load|error|mouseover|focus|submit)\\s*="
+    message: "Inline JavaScript event handler detected. Potential XSS vector."
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+
+  - id: html-script-tag-inline
+    severity: HIGH
+    languages: [html]
+    pattern-regex: "<script[^>]*>[^<]+</script>"
+    message: "Inline JavaScript detected. Consider using external scripts with CSP."
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+
+  - id: html-javascript-uri
+    severity: HIGH
+    languages: [html]
+    pattern-regex: "href=[\"']javascript:"
+    message: "javascript: URI detected. High-risk XSS vector."
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+
+
+  # =========================================================
+  # A04: Insecure Design
+  # =========================================================
+  - id: html-autocomplete-enabled
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "<input[^>]*(type=[\"']password[\"'])[^>]*>"
+    message: "Password field detected without autocomplete=\"off\"."
+    metadata:
+      cwe: CWE-522
+      owasp: A04:2021-Insecure Design
+
+  - id: html-client-side-validation-only
+    severity: LOW
+    languages: [html]
+    pattern-regex: "required|minlength|maxlength|pattern="
+    message: "Client-side validation detected. Ensure server-side validation exists."
+    metadata:
+      cwe: CWE-602
+      owasp: A04:2021-Insecure Design
+
+
+  # =========================================================
+  # A05: Security Misconfiguration
+  # =========================================================
+  - id: html-missing-csp
+    severity: MEDIUM
+    languages: [html]
+    pattern-not-regex: "Content-Security-Policy"
+    message: "Content-Security-Policy (CSP) header not detected in HTML."
+    metadata:
+      cwe: CWE-693
+      owasp: A05:2021-Security Misconfiguration
+
+  - id: html-iframe-no-sandbox
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "<iframe(?![^>]*sandbox)"
+    message: "iframe without sandbox attribute detected."
+    metadata:
+      cwe: CWE-1021
+      owasp: A05:2021-Security Misconfiguration
+
+
+  # =========================================================
+  # A06: Vulnerable and Outdated Components
+  # =========================================================
+  - id: html-outdated-library
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "(jquery|bootstrap|angular)[.-][0-9]+\\.[0-9]+\\.[0-9]+"
+    message: "Client-side library version detected. Verify it is not vulnerable."
+    metadata:
+      cwe: CWE-1104
+      owasp: A06:2021-Vulnerable Components
+
+
+  # =========================================================
+  # A07: Identification & Authentication Failures
+  # =========================================================
+  - id: html-password-input-visible
+    severity: HIGH
+    languages: [html]
+    pattern-regex: "<input[^>]*type=[\"']text[\"'][^>]*(password|pwd)"
+    message: "Password input field is not masked."
+    metadata:
+      cwe: CWE-521
+      owasp: A07:2021-Identification and Authentication Failures
+
+  - id: html-remember-me-checkbox
+    severity: LOW
+    languages: [html]
+    pattern-regex: "remember[-_]?me"
+    message: "Remember-me functionality detected. Ensure secure token handling."
+    metadata:
+      cwe: CWE-613
+      owasp: A07:2021-Identification and Authentication Failures
+
+
+  # =========================================================
+  # A08: Software and Data Integrity Failures
+  # =========================================================
+  - id: html-integrity-missing
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "<script[^>]*src=[\"']https://"
+    message: "External script loaded without Subresource Integrity (SRI)."
+    metadata:
+      cwe: CWE-829
+      owasp: A08:2021-Software and Data Integrity Failures
+
+
+  # =========================================================
+  # A09: Logging and Monitoring Failures
+  # =========================================================
+  - id: html-commented-sensitive-info
+    severity: LOW
+    languages: [html]
+    pattern-regex: "<!--[^>]*(password|token|apikey|secret)[^>]*-->"
+    message: "Sensitive information found in HTML comments."
+    metadata:
+      cwe: CWE-532
+      owasp: A09:2021-Logging and Monitoring Failures
+
+
+  # =========================================================
+  # A10: Clickjacking
+  # =========================================================
+  - id: html-frame-ancestors-missing
+    severity: HIGH
+    languages: [html]
+    pattern-not-regex: "X-Frame-Options|frame-ancestors"
+    message: "Clickjacking protection not detected (X-Frame-Options / CSP frame-ancestors)."
+    metadata:
+      cwe: CWE-1021
+      owasp: A10:2021-Clickjacking
+
+
+  # =========================================================
+  # Additional High-Risk HTML Issues
+  # =========================================================
+  - id: html-file-upload-no-accept
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "<input[^>]*type=[\"']file[\"'](?![^>]*accept)"
+    message: "File upload input without accept attribute."
+    metadata:
+      cwe: CWE-434
+
+  - id: html-open-redirect
+    severity: MEDIUM
+    languages: [html]
+    pattern-regex: "href=[\"']\\?redirect="
+    message: "Potential client-side open redirect pattern detected."
+    metadata:
+      cwe: CWE-601

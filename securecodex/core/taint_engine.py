@@ -57,7 +57,7 @@ class TaintEngine:
         """Check if a node represents a constant literal value."""
         constant_types = [
             'string', 'string_literal', 'number', 'integer', 'float', 
-            'boolean', 'true', 'false', 'none', 'null'
+            'boolean', 'true', 'false', 'none', 'null', 'constant'
         ]
         # Check node type
         if node.type in constant_types:
@@ -80,12 +80,14 @@ class TaintEngine:
         node_map = {}
         
         def add_edge(u, v):
-            uid, vid = id(u), id(v)
+            uid, vid = u.id if hasattr(u, 'id') else id(u), v.id if hasattr(v, 'id') else id(v)
             node_map[uid], node_map[vid] = u, v
             if uid not in dfg: dfg[uid] = set()
             dfg[uid].add(vid)
 
         # 1. Generic AST-based flow
+        variable_map = {} # Track last assigned node for each variable name
+        
         def walk(node):
             node_map[id(node)] = node
             
@@ -95,23 +97,82 @@ class TaintEngine:
                 rhs = node.child_by_field_name('right') or node.child_by_field_name('value')
                 if lhs and rhs:
                     add_edge(rhs, lhs)
+                    
+                    # Handle multiple targets (e.g. x, y = ...)
+                    targets = [lhs]
+                    if hasattr(lhs, 'child_count') and lhs.child_count > 0:
+                        targets = [lhs.child(i) for i in range(lhs.child_count)]
+                    
+                    for target in targets:
+                        var_name = target.text.decode('utf8').strip()
+                        if var_name:
+                            variable_map[var_name] = target
+                            # Also flow from LHS wrapper to specific target if needed
+                            if target != lhs:
+                                add_edge(lhs, target)
             
-            # F-Strings / JoinedStr (Python)
-            if node.type in ['joinedstr', 'f_string']:
+            # 2. Function Calls (result = func(arg1, arg2))
+            if node.type in ['call', 'call_expression']:
+                args = node.child_by_field_name('arguments') or node.child_by_field_name('args')
+                if args:
+                    # In many languages, arguments is a node containing children
+                    # In Python AST bridge, it might be a list or a single node
+                    for i in range(args.child_count if hasattr(args, 'child_count') else 0):
+                        add_edge(args.child(i), node)
+                
+                # Check for explicit 'args' in Python AST bridge
+                if hasattr(node.node, 'args'):
+                    for arg in node.node.args:
+                        # Find the corresponding bridge node or just dummy if needed
+                        # Simplification: TaintEngine walk already visits children, 
+                        # we just need to ensure edges are added.
+                        pass
+
+            # 3. Binary Operations (a + b)
+            if node.type in ['binary_operator', 'binary_expression', 'binop']:
+                left = node.child_by_field_name('left')
+                right = node.child_by_field_name('right')
+                if left: add_edge(left, node)
+                if right: add_edge(right, node)
+
+            # 4. F-Strings / JoinedStr (Python)
+            if node.type in ['joinedstr', 'f_string', 'template_string']:
                 for i in range(node.child_count):
                     add_edge(node.child(i), node)
 
-            # Subscripts (x[0])
-            if node.type == 'subscript':
-                value = node.child_by_field_name('value')
+            # 5. Member/Attribute Access (obj.prop)
+            if node.type in ['attribute', 'member_expression']:
+                value = node.child_by_field_name('value') or node.child_by_field_name('object')
                 if value:
                     add_edge(value, node)
 
-            # Identifier usage in calls/ops
+            # 6. Subscripts (x[0])
+            if node.type in ['subscript', 'subscript_expression']:
+                value = node.child_by_field_name('value') or node.child_by_field_name('object')
+                if value:
+                    add_edge(value, node)
+
+            # 7. Identifier usage in calls/ops
             if node.type in ['identifier', 'name']:
+                # If we've seen an assignment to this name, flow from that assignment to this usage
+                var_name = node.text.decode('utf8').strip()
+                if var_name in variable_map:
+                    add_edge(variable_map[var_name], node)
+                
                 p = node.parent
                 if p:
                     # Flow from var name to the expression using it
+                    add_edge(node, p)
+
+            # 8. Generic flow to parent for expressions
+            expression_types = [
+                'binary_operator', 'binary_expression', 'binop',
+                'call', 'call_expression', 'attribute', 'subscript',
+                'joinedstr', 'f_string', 'template_string'
+            ]
+            if node.type in expression_types:
+                p = node.parent
+                if p and p.type not in ['module', 'function_definition', 'class_definition']:
                     add_edge(node, p)
 
             for i in range(node.child_count):
@@ -147,22 +208,25 @@ class TaintEngine:
         Breadth-first search on the DFG to find reachable sinks while avoiding sanitizers.
         """
         paths = []
-        sink_ids = {id(s) for s in sinks}
+        sink_ids = {s.id if hasattr(s, 'id') else id(s) for s in sinks}
+        start_id = source.id if hasattr(source, 'id') else id(source)
+        
         queue = [[source]]
-        visited = {id(source)}
+        visited = {start_id}
         
         while queue:
             path = queue.pop(0)
             node = path[-1]
+            node_id = node.id if hasattr(node, 'id') else id(node)
             
-            if id(node) in sink_ids:
+            if node_id in sink_ids:
                 paths.append(path)
                 continue
             
-            if id(node) in sanitizer_ids:
+            if node_id in sanitizer_ids:
                 continue 
                 
-            for next_node_id in dfg.get(id(node), []):
+            for next_node_id in dfg.get(node_id, []):
                 if next_node_id not in visited:
                     visited.add(next_node_id)
                     next_node = node_map.get(next_node_id)

@@ -1,0 +1,177 @@
+rules:
+
+  # =========================================================
+  # WEAK / BROKEN HASHING ALGORITHMS
+  # =========================================================
+  - id: crypto-weak-hash-md5
+    severity: CRITICAL
+    languages: [python, java, kotlin, csharp, javascript, typescript, php, go]
+    pattern-either:
+      - pattern: md5(...)
+      - pattern: hashlib.md5(...)
+      - pattern: MessageDigest.getInstance("MD5")
+      - pattern: MD5.Create(...)
+      - pattern: crypto.createHash("md5")
+      - pattern: md5.Sum(...)
+    message: "MD5 hashing algorithm is broken and must not be used."
+    metadata:
+      cwe: CWE-327
+      category: broken-cryptography
+
+  - id: crypto-weak-hash-sha1
+    severity: CRITICAL
+    languages: [python, java, kotlin, csharp, javascript, typescript, php, go]
+    pattern-either:
+      - pattern: sha1(...)
+      - pattern: hashlib.sha1(...)
+      - pattern: MessageDigest.getInstance("SHA-1")
+      - pattern: SHA1.Create(...)
+      - pattern: crypto.createHash("sha1")
+      - pattern: sha1.Sum(...)
+    message: "SHA-1 hashing algorithm is cryptographically broken."
+    metadata:
+      cwe: CWE-327
+      category: broken-cryptography
+
+
+  # =========================================================
+  # WEAK PASSWORD HASHING
+  # =========================================================
+  - id: crypto-fast-hash-for-password
+    severity: HIGH
+    languages: [python, java, kotlin, csharp, php]
+    pattern-either:
+      - pattern: hashlib.sha256(...)
+      - pattern: hash("sha256", ...)
+      - pattern: MessageDigest.getInstance("SHA-256")
+    message: "Fast hashing used for passwords. Use bcrypt, scrypt, or Argon2."
+    metadata:
+      cwe: CWE-916
+      category: broken-cryptography
+
+
+  # =========================================================
+  # BROKEN / WEAK ENCRYPTION ALGORITHMS
+  # =========================================================
+  - id: crypto-weak-encryption-des-3des
+    severity: CRITICAL
+    languages: [java, kotlin, csharp, python, php]
+    pattern-either:
+      - pattern: Cipher.getInstance("DES")
+      - pattern: Cipher.getInstance("DESede")
+      - pattern: DES.new(...)
+      - pattern: TripleDESCryptoServiceProvider()
+    message: "DES / 3DES encryption is insecure and deprecated."
+    metadata:
+      cwe: CWE-326
+      category: broken-cryptography
+
+  - id: crypto-weak-encryption-rc4
+    severity: CRITICAL
+    languages: [java, csharp, javascript, typescript]
+    pattern-either:
+      - pattern: Cipher.getInstance("RC4")
+      - pattern: RC4CryptoServiceProvider()
+    message: "RC4 encryption is broken and must not be used."
+    metadata:
+      cwe: CWE-327
+      category: broken-cryptography
+
+
+  # =========================================================
+  # INSECURE AES MODES
+  # =========================================================
+  - id: crypto-aes-ecb
+    severity: CRITICAL
+    languages: [java, kotlin, csharp, python, php]
+    pattern-either:
+      - pattern: Cipher.getInstance("AES/ECB")
+      - pattern: Cipher.getInstance("AES/ECB/PKCS5Padding")
+      - pattern: AES.new(..., AES.MODE_ECB)
+    message: "AES in ECB mode is insecure. Use AES-GCM or AES-CBC with random IV."
+    metadata:
+      cwe: CWE-327
+      category: broken-cryptography
+
+  - id: crypto-static-iv
+    severity: HIGH
+    languages: [java, kotlin, csharp, python, php]
+    pattern-regex: "(IV|iv|initializationVector)\\s*=\\s*(new byte\\[16\\]|\"0000000000000000\")"
+    message: "Static or predictable IV detected."
+    metadata:
+      cwe: CWE-329
+      category: broken-cryptography
+
+
+  # =========================================================
+  # INSECURE RANDOM NUMBER GENERATION
+  # =========================================================
+  - id: crypto-insecure-random
+    severity: HIGH
+    languages: [java, kotlin, csharp, python, javascript, typescript, php, go]
+    pattern-either:
+      - pattern: "new Random()"
+      - pattern: "random.random()"
+      - pattern: "Math.random()"
+      - pattern: "rand.Int(...)"
+    message: "Non-cryptographic random number generator used."
+    metadata:
+      cwe: CWE-338
+      category: broken-cryptography
+
+
+  # =========================================================
+  # BROKEN KEY DERIVATION
+  # =========================================================
+  - id: crypto-weak-kdf
+    severity: HIGH
+    languages: [java, kotlin, csharp, python]
+    pattern-either:
+      - pattern: PBKDF2WithHmacSHA1
+      - pattern: Rfc2898DeriveBytes(...)
+    message: "Weak key derivation detected. Use PBKDF2-HMAC-SHA256, bcrypt, or Argon2."
+    metadata:
+      cwe: CWE-916
+      category: broken-cryptography
+
+
+  # =========================================================
+  # TLS / SSL MISCONFIGURATION
+  # =========================================================
+  - id: crypto-weak-tls-protocol
+    severity: CRITICAL
+    languages: [java, kotlin, csharp, go]
+    pattern-either:
+      - pattern: SSLContext.getInstance("SSL")
+      - pattern: SSLContext.getInstance("TLSv1")
+      - pattern: "InsecureSkipVerify: true"
+      - pattern: SecurityProtocolType.Ssl3
+    message: "Weak or deprecated TLS/SSL protocol detected."
+    metadata:
+      cwe: CWE-326
+      category: broken-cryptography
+
+  - id: crypto-cert-validation-disabled
+    severity: CRITICAL
+    languages: [java, kotlin, csharp, go]
+    pattern-either:
+      - pattern: TrustAllCertificates
+      - pattern: checkServerTrusted(...)
+      - pattern: "InsecureSkipVerify: true"
+    message: "TLS certificate validation disabled. Vulnerable to MITM attacks."
+    metadata:
+      cwe: CWE-295
+      category: broken-cryptography
+
+
+  # =========================================================
+  # HARDCODED CRYPTOGRAPHIC KEYS
+  # =========================================================
+  - id: crypto-hardcoded-key
+    severity: CRITICAL
+    languages: [python, java, kotlin, csharp, javascript, typescript, php, go]
+    pattern-regex: "(cryptoKey|encryptionKey|secretKey)\\s*[:=]\\s*['\"][A-Za-z0-9+/=]{16,}['\"]"
+    message: "Hardcoded cryptographic key detected."
+    metadata:
+      cwe: CWE-321
+      category: broken-cryptography

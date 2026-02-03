@@ -1,0 +1,456 @@
+rules:
+  # ============================================================================
+  # SQL INJECTION - Comprehensive Coverage
+  # ============================================================================
+  
+  - id: python-sqli-flask
+    name: "Flask SQL Injection"
+    description: "SQL injection via Flask request parameters"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: flask.request.args.get(...)
+      - pattern: flask.request.form.get(...)
+      - pattern: flask.request.json.get(...)
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.json.get(...)
+      - pattern: request.values.get(...)
+    pattern-sinks:
+      - pattern: db.execute($SQL)
+      - pattern: cursor.execute($SQL)
+      - pattern: connection.execute($SQL)
+      - pattern: session.execute($SQL)
+      - pattern: engine.execute($SQL)
+    pattern-sanitizers:
+      - pattern: int(...)
+      - pattern: float(...)
+      - pattern: str.isdigit(...)
+    message: "SQL injection: untrusted data flows to database execution"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: python-sqli-django
+    name: "Django SQL Injection"
+    description: "SQL injection via Django request parameters"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.GET.get(...)
+      - pattern: request.POST.get(...)
+      - pattern: request.body
+    pattern-sinks:
+      - pattern: Model.objects.raw($SQL)
+      - pattern: connection.cursor().execute($SQL)
+      - pattern: Model.objects.extra($SQL)
+    pattern-sanitizers:
+      - pattern: int(...)
+      - pattern: Model.objects.filter(...)
+    message: "Django SQL injection: use ORM filters instead of raw SQL"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: python-sqli-fastapi
+    name: "FastAPI SQL Injection"
+    description: "SQL injection via FastAPI request parameters"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: Query(...)
+      - pattern: Path(...)
+      - pattern: Body(...)
+    pattern-sinks:
+      - pattern: db.execute($SQL)
+      - pattern: session.execute($SQL)
+    pattern-sanitizers:
+      - pattern: int(...)
+      - pattern: Pydantic.validator(...)
+    message: "FastAPI SQL injection: use parameterized queries"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # NOSQL INJECTION
+  # ============================================================================
+
+  - id: python-nosql-mongodb
+    name: "MongoDB NoSQL Injection"
+    description: "NoSQL injection in MongoDB queries"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.json.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: collection.find($QUERY)
+      - pattern: collection.find_one($QUERY)
+      - pattern: db.collection.find($QUERY)
+      - pattern: collection.update($QUERY)
+      - pattern: collection.delete($QUERY)
+    pattern-sanitizers:
+      - pattern: ObjectId(...)
+      - pattern: int(...)
+    message: "NoSQL injection: untrusted data in MongoDB query"
+    metadata:
+      cwe: CWE-943
+      owasp: A03:2021-Injection
+      confidence: 0.9
+
+  - id: python-nosql-redis
+    name: "Redis Command Injection"
+    description: "Command injection in Redis operations"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.json.get(...)
+    pattern-sinks:
+      - pattern: redis.execute_command(...)
+      - pattern: redis.eval(...)
+    pattern-sanitizers:
+      - pattern: str.isalnum(...)
+    message: "Redis command injection: validate input before execution"
+    metadata:
+      cwe: CWE-77
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # COMMAND INJECTION
+  # ============================================================================
+
+  - id: python-command-injection-os
+    name: "OS Command Injection"
+    description: "Command injection via os module"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.json.get(...)
+    pattern-sinks:
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+      - pattern: os.execl(...)
+      - pattern: os.execv(...)
+    pattern-sanitizers:
+      - pattern: shlex.quote(...)
+    message: "Command injection: use shlex.quote() or avoid shell=True"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  - id: python-command-injection-subprocess
+    name: "Subprocess Command Injection"
+    description: "Command injection via subprocess module"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: subprocess.run(..., shell=True)
+      - pattern: subprocess.Popen(..., shell=True)
+      - pattern: subprocess.call(..., shell=True)
+      - pattern: subprocess.check_output(..., shell=True)
+    pattern-sanitizers:
+      - pattern: shlex.quote(...)
+      - pattern: shlex.split(...)
+    message: "Command injection: avoid shell=True or use shlex.quote()"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  # ============================================================================
+  # CODE INJECTION
+  # ============================================================================
+
+  - id: python-code-injection-eval
+    name: "Code Injection via eval()"
+    description: "Arbitrary code execution via eval()"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.json.get(...)
+    pattern-sinks:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: compile(...)
+      - pattern: __import__(...)
+    message: "Code injection: never use eval/exec with user input"
+    metadata:
+      cwe: CWE-94
+      owasp: A03:2021-Injection
+      confidence: 1.0
+
+  # ============================================================================
+  # TEMPLATE INJECTION (SSTI)
+  # ============================================================================
+
+  - id: python-ssti-jinja2
+    name: "Jinja2 Template Injection"
+    description: "Server-Side Template Injection in Jinja2"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: jinja2.Template(...).render(...)
+      - pattern: render_template_string(...)
+      - pattern: Environment().from_string(...)
+    pattern-sanitizers:
+      - pattern: escape(...)
+      - pattern: Markup.escape(...)
+    message: "SSTI: avoid render_template_string() with user input"
+    metadata:
+      cwe: CWE-94
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # LDAP INJECTION
+  # ============================================================================
+
+  - id: python-ldap-injection
+    name: "LDAP Injection"
+    description: "LDAP injection via untrusted input"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: ldap.search(...)
+      - pattern: ldap.bind(...)
+      - pattern: ldap.add(...)
+    pattern-sanitizers:
+      - pattern: ldap.filter.escape_filter_chars(...)
+    message: "LDAP injection: use escape_filter_chars() for user input"
+    metadata:
+      cwe: CWE-90
+      owasp: A03:2021-Injection
+      confidence: 0.9
+
+  # ============================================================================
+  # XPATH INJECTION
+  # ============================================================================
+
+  - id: python-xpath-injection
+    name: "XPath Injection"
+    description: "XPath injection via untrusted input"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: etree.XPath(...)
+      - pattern: xml.xpath(...)
+      - pattern: lxml.etree.XPath(...)
+    message: "XPath injection: validate and sanitize user input"
+    metadata:
+      cwe: CWE-643
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # CROSS-SITE SCRIPTING (XSS)
+  # ============================================================================
+
+  - id: python-xss-reflected-flask
+    name: "Reflected XSS in Flask"
+    description: "Reflected XSS via Flask response"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.headers.get(...)
+    pattern-sinks:
+      - pattern: make_response(...)
+      - pattern: Response(...)
+      - pattern: jsonify(...)
+    pattern-sanitizers:
+      - pattern: escape(...)
+      - pattern: Markup.escape(...)
+      - pattern: bleach.clean(...)
+    message: "Reflected XSS: escape user input before rendering"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  - id: python-xss-django
+    name: "XSS in Django"
+    description: "XSS via Django HttpResponse"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.GET.get(...)
+      - pattern: request.POST.get(...)
+    pattern-sinks:
+      - pattern: HttpResponse(...)
+      - pattern: HttpResponseRedirect(...)
+    pattern-sanitizers:
+      - pattern: escape(...)
+      - pattern: mark_safe(...)
+    message: "XSS: use Django's auto-escaping or escape() function"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # SERVER-SIDE REQUEST FORGERY (SSRF)
+  # ============================================================================
+
+  - id: python-ssrf-requests
+    name: "SSRF via requests library"
+    description: "Server-Side Request Forgery using requests"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.json.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: requests.get(...)
+      - pattern: requests.post(...)
+      - pattern: requests.request(...)
+      - pattern: urllib.request.urlopen(...)
+      - pattern: httpx.get(...)
+      - pattern: httpx.post(...)
+    pattern-sanitizers:
+      - pattern: urlparse(...)
+      - pattern: validators.url(...)
+    message: "SSRF: validate and whitelist URLs before making requests"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  # ============================================================================
+  # PATH TRAVERSAL
+  # ============================================================================
+
+  - id: python-path-traversal-file-ops
+    name: "Path Traversal in File Operations"
+    description: "Path traversal via file system operations"
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+      - pattern: request.files.get(...)
+    pattern-sinks:
+      - pattern: open(...)
+      - pattern: os.open(...)
+      - pattern: pathlib.Path(...)
+      - pattern: os.path.join(...)
+      - pattern: shutil.copy(...)
+      - pattern: shutil.move(...)
+    pattern-sanitizers:
+      - pattern: os.path.basename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+      - pattern: os.path.abspath(...)
+    message: "Path traversal: use os.path.basename() or secure_filename()"
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9
+
+  # ============================================================================
+  # DESERIALIZATION
+  # ============================================================================
+
+  - id: python-unsafe-pickle
+    name: "Unsafe Pickle Deserialization"
+    description: "Arbitrary code execution via pickle.loads()"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.data
+      - pattern: request.get_data(...)
+      - pattern: request.json.get(...)
+    pattern-sinks:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - pattern: cPickle.loads(...)
+    message: "Unsafe deserialization: never unpickle untrusted data"
+    metadata:
+      cwe: CWE-502
+      owasp: A08:2021-Software and Data Integrity Failures
+      confidence: 1.0
+
+  - id: python-unsafe-yaml
+    name: "Unsafe YAML Deserialization"
+    description: "Code execution via yaml.load()"
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.data
+      - pattern: request.get_data(...)
+    pattern-sinks:
+      - pattern: yaml.load(...)
+      - pattern: yaml.unsafe_load(...)
+    pattern-sanitizers:
+      - pattern: yaml.safe_load(...)
+    message: "Unsafe YAML: use yaml.safe_load() instead of yaml.load()"
+    metadata:
+      cwe: CWE-502
+      owasp: A08:2021-Software and Data Integrity Failures
+      confidence: 1.0
+
+  # ============================================================================
+  # OPEN REDIRECT
+  # ============================================================================
+
+  - id: python-open-redirect
+    name: "Open Redirect"
+    description: "Unvalidated redirect to user-controlled URL"
+    severity: MEDIUM
+    languages: [python]
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: redirect(...)
+      - pattern: HttpResponseRedirect(...)
+    pattern-sanitizers:
+      - pattern: url_for(...)
+      - pattern: is_safe_url(...)
+    message: "Open redirect: validate redirect URLs against whitelist"
+    metadata:
+      cwe: CWE-601
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.8

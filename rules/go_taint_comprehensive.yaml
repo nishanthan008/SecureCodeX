@@ -1,0 +1,107 @@
+rules:
+  # ============================================================================
+  # SQL INJECTION - Go
+  # ============================================================================
+  
+  - id: go-sqli-database
+    name: "Go SQL Injection"
+    description: "SQL injection in database queries"
+    severity: CRITICAL
+    languages: [go]
+    mode: taint
+    pattern-sources:
+      - pattern: r.URL.Query().Get(...)
+      - pattern: r.FormValue(...)
+      - pattern: r.PostFormValue(...)
+      - pattern: c.Query(...)
+      - pattern: c.Param(...)
+    pattern-sinks:
+      - pattern: db.Query(...)
+      - pattern: db.Exec(...)
+      - pattern: db.QueryRow(...)
+    pattern-sanitizers:
+      - pattern: strconv.Atoi(...)
+      - pattern: db.Prepare(...)
+    message: "SQL injection: use parameterized queries with $1, $2 placeholders"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # COMMAND INJECTION - Go
+  # ============================================================================
+
+  - id: go-command-injection
+    name: "Go Command Injection"
+    description: "Command injection via exec.Command"
+    severity: CRITICAL
+    languages: [go]
+    mode: taint
+    pattern-sources:
+      - pattern: r.URL.Query().Get(...)
+      - pattern: r.FormValue(...)
+      - pattern: c.Query(...)
+    pattern-sinks:
+      - pattern: exec.Command(...)
+      - pattern: exec.CommandContext(...)
+    message: "Command injection: validate input before exec.Command()"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  # ============================================================================
+  # SSRF - Go
+  # ============================================================================
+
+  - id: go-ssrf-http
+    name: "SSRF in Go HTTP Client"
+    description: "Server-Side Request Forgery"
+    severity: HIGH
+    languages: [go]
+    mode: taint
+    pattern-sources:
+      - pattern: r.URL.Query().Get(...)
+      - pattern: r.FormValue(...)
+      - pattern: c.Query(...)
+    pattern-sinks:
+      - pattern: http.Get(...)
+      - pattern: http.Post(...)
+      - pattern: http.NewRequest(...)
+      - pattern: client.Do(...)
+    pattern-sanitizers:
+      - pattern: url.Parse(...)
+    message: "SSRF: validate and whitelist URLs"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  # ============================================================================
+  # PATH TRAVERSAL - Go
+  # ============================================================================
+
+  - id: go-path-traversal
+    name: "Go Path Traversal"
+    description: "Path traversal in file operations"
+    severity: HIGH
+    languages: [go]
+    mode: taint
+    pattern-sources:
+      - pattern: r.URL.Query().Get(...)
+      - pattern: r.FormValue(...)
+      - pattern: c.Query(...)
+    pattern-sinks:
+      - pattern: os.Open(...)
+      - pattern: os.OpenFile(...)
+      - pattern: ioutil.ReadFile(...)
+      - pattern: os.ReadFile(...)
+    pattern-sanitizers:
+      - pattern: filepath.Base(...)
+      - pattern: filepath.Clean(...)
+    message: "Path traversal: use filepath.Base() to sanitize paths"
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9

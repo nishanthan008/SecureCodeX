@@ -1,0 +1,251 @@
+rules:
+
+  # =========================================================
+  # A01: Broken Access Control
+  # =========================================================
+  - id: cs-missing-authorize-attribute
+    severity: HIGH
+    languages: [csharp]
+    pattern: |
+      [Http$METHOD]
+      public IActionResult $METHOD(...) {
+        ...
+      }
+    message: "Controller action without [Authorize] attribute."
+    metadata:
+      cwe: CWE-284
+      owasp: A01:2021-Broken Access Control
+
+
+  # =========================================================
+  # A02: Cryptographic Failures
+  # =========================================================
+  - id: cs-weak-hash-md5
+    severity: MEDIUM
+    languages: [csharp]
+    pattern: MD5.Create(...)
+    message: "MD5 is cryptographically weak."
+    metadata:
+      cwe: CWE-327
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: cs-weak-hash-sha1
+    severity: MEDIUM
+    languages: [csharp]
+    pattern: SHA1.Create(...)
+    message: "SHA-1 is cryptographically weak."
+    metadata:
+      cwe: CWE-327
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: cs-hardcoded-secret
+    severity: HIGH
+    languages: [csharp]
+    pattern-regex: "(password|secret|token|apikey)\\s*=\\s*\"[^\"]+\""
+    message: "Hardcoded secret detected."
+    metadata:
+      cwe: CWE-798
+      owasp: A02:2021-Cryptographic Failures
+
+
+  # =========================================================
+  # A03: Injection
+  # =========================================================
+  - id: cs-sql-injection
+    severity: CRITICAL
+    languages: [csharp]
+    mode: taint
+    source:
+      - Request.Query[...]
+      - Request.Form[...]
+      - Request.Headers[...]
+    sink:
+      - SqlCommand(...)
+      - ExecuteSqlCommand(...)
+    message: "User input reaches SQL execution without parameterization."
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+
+  - id: cs-command-injection
+    severity: HIGH
+    languages: [csharp]
+    pattern: Process.Start(...)
+    message: "Command execution detected. Possible command injection."
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+
+  - id: cs-deserialization-injection
+    severity: CRITICAL
+    languages: [csharp]
+    pattern-either:
+      - pattern: BinaryFormatter.Deserialize(...)
+      - pattern: SoapFormatter.Deserialize(...)
+    message: "Unsafe deserialization detected."
+    metadata:
+      cwe: CWE-502
+      owasp: A03:2021-Injection
+
+  - id: cs-eval-like-codegen
+    severity: HIGH
+    languages: [csharp]
+    pattern: CSharpScript.EvaluateAsync(...)
+    message: "Dynamic code execution detected."
+    metadata:
+      cwe: CWE-95
+      owasp: A03:2021-Injection
+
+
+  # =========================================================
+  # A04: Insecure Design
+  # =========================================================
+  - id: cs-insecure-random
+    severity: MEDIUM
+    languages: [csharp]
+    pattern: new Random()
+    message: "System.Random is not cryptographically secure."
+    metadata:
+      cwe: CWE-338
+      owasp: A04:2021-Insecure Design
+
+
+  # =========================================================
+  # A05: Security Misconfiguration
+  # =========================================================
+  - id: cs-debug-enabled
+    severity: MEDIUM
+    languages: [csharp]
+    pattern: app.UseDeveloperExceptionPage()
+    message: "Developer exception page enabled."
+    metadata:
+      cwe: CWE-489
+      owasp: A05:2021-Security Misconfiguration
+
+  - id: cs-cors-any-origin
+    severity: MEDIUM
+    languages: [csharp]
+    pattern: AllowAnyOrigin()
+    message: "CORS configured to allow any origin."
+    metadata:
+      cwe: CWE-942
+      owasp: A05:2021-Security Misconfiguration
+
+
+  # =========================================================
+  # A06: Vulnerable and Outdated Components
+  # =========================================================
+  - id: cs-hardcoded-package-version
+    severity: MEDIUM
+    languages: [csharp]
+    pattern-regex: "<PackageReference Include=\".*\" Version=\"[0-9\\.]+\""
+    message: "Hardcoded dependency version detected. Verify for vulnerabilities."
+    metadata:
+      cwe: CWE-1104
+      owasp: A06:2021-Vulnerable Components
+
+
+  # =========================================================
+  # A07: Identification & Authentication Failures
+  # =========================================================
+  - id: cs-plaintext-password-compare
+    severity: HIGH
+    languages: [csharp]
+    pattern: if ($PWD == $INPUT)
+    message: "Plaintext password comparison detected."
+    metadata:
+      cwe: CWE-521
+      owasp: A07:2021-Identification and Authentication Failures
+
+  - id: cs-jwt-no-validation
+    severity: HIGH
+    languages: [csharp]
+    pattern: ReadJwtToken(...)
+    message: "JWT read without validating signature."
+    metadata:
+      cwe: CWE-347
+      owasp: A07:2021-Identification and Authentication Failures
+
+
+  # =========================================================
+  # A08: Software and Data Integrity Failures
+  # =========================================================
+  - id: cs-unsafe-deserialization-json
+    severity: HIGH
+    languages: [csharp]
+    pattern: JsonConvert.DeserializeObject(...)
+    message: "Deserialization of untrusted JSON without validation."
+    metadata:
+      cwe: CWE-502
+      owasp: A08:2021-Software and Data Integrity Failures
+
+
+  # =========================================================
+  # A09: Logging and Monitoring Failures
+  # =========================================================
+  - id: cs-empty-catch
+    severity: LOW
+    languages: [csharp]
+    pattern: |
+      try {
+        ...
+      } catch (Exception) {
+      }
+    message: "Empty catch block hides exceptions."
+    metadata:
+      cwe: CWE-391
+      owasp: A09:2021-Logging and Monitoring Failures
+
+
+  # =========================================================
+  # A10: Server-Side Request Forgery (SSRF)
+  # =========================================================
+  - id: cs-ssrf
+    severity: HIGH
+    languages: [csharp]
+    mode: taint
+    source:
+      - Request.Query[...]
+      - Request.Form[...]
+    sink:
+      - new HttpClient().GetAsync(...)
+      - new WebClient().DownloadString(...)
+    message: "User input used in outbound HTTP request."
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-SSRF
+
+
+  # =========================================================
+  # File System & Path Traversal
+  # =========================================================
+  - id: cs-path-traversal
+    severity: HIGH
+    languages: [csharp]
+    mode: taint
+    source:
+      - Request.Query[...]
+    sink:
+      - File.Open(...)
+      - File.ReadAllText(...)
+    message: "User input used in file path (path traversal)."
+    metadata:
+      cwe: CWE-22
+
+
+  # =========================================================
+  # Cross-Site Scripting (XSS)
+  # =========================================================
+  - id: cs-xss
+    severity: HIGH
+    languages: [csharp]
+    mode: taint
+    source:
+      - Request.Query[...]
+      - Request.Form[...]
+    sink:
+      - Response.Write(...)
+      - return Content(...)
+    message: "Reflected XSS vulnerability detected."
+    metadata:
+      cwe: CWE-79

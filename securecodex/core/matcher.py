@@ -34,6 +34,7 @@ class Matcher:
                 
             findings.append({
                 "node": node,
+                "id": node.id if hasattr(node, 'id') else id(node),
                 "bindings": bindings,
                 "line": node.start_point[0] + 1,
                 "column": node.start_point[1] + 1,
@@ -174,6 +175,7 @@ class Matcher:
             match = re.fullmatch(regex_pattern, node_text, re.IGNORECASE | re.DOTALL)
 
         if match:
+            # print(f"DEBUG: MATCH FOUND! Pattern: {pattern_str}, Node: {node.type}")
             # Update bindings with new captured variables
             for v in vars_to_replace:
                 if v not in bindings:
@@ -183,6 +185,10 @@ class Matcher:
                         pass
             return True
             
+        if "request" in pattern_str or "open" in pattern_str:
+            # We don't want to print EVERYTHING, just interesting ones
+            pass
+            # print(f"DEBUG: No match for pattern '{pattern_str}' on node '{node_norm}' (Type: {node.type})")
         return False
 
     def _find_regex_matches(self, regex: str, root: Any, content_bytes: bytes) -> List[Dict[str, Any]]:

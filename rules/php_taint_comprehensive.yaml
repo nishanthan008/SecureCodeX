@@ -1,0 +1,255 @@
+rules:
+  # ============================================================================
+  # SQL INJECTION - PHP
+  # ============================================================================
+  
+  - id: php-sqli-mysqli
+    name: "MySQLi SQL Injection"
+    description: "SQL injection via mysqli_query"
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_REQUEST[...]
+      - pattern: $_COOKIE[...]
+    pattern-sinks:
+      - pattern: mysqli_query(...)
+      - pattern: mysql_query(...)
+      - pattern: mysqli::query(...)
+    pattern-sanitizers:
+      - pattern: intval(...)
+      - pattern: mysqli_real_escape_string(...)
+    message: "SQL injection: use prepared statements or mysqli_real_escape_string()"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: php-sqli-pdo
+    name: "PDO SQL Injection"
+    description: "SQL injection via PDO query"
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_REQUEST[...]
+    pattern-sinks:
+      - pattern: PDO::query(...)
+      - pattern: PDO::exec(...)
+      - pattern: $pdo->query(...)
+    pattern-sanitizers:
+      - pattern: $pdo->prepare(...)
+    message: "SQL injection: use PDO prepared statements"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: php-sqli-laravel
+    name: "Laravel SQL Injection"
+    description: "SQL injection in Laravel raw queries"
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $request->input(...)
+      - pattern: $request->get(...)
+      - pattern: Request::input(...)
+    pattern-sinks:
+      - pattern: DB::raw(...)
+      - pattern: DB::statement(...)
+    pattern-sanitizers:
+      - pattern: DB::table(...)->where(...)
+    message: "SQL injection: use Eloquent ORM or query builder"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # COMMAND INJECTION - PHP
+  # ============================================================================
+
+  - id: php-command-injection
+    name: "PHP Command Injection"
+    description: "Command injection via shell execution functions"
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_REQUEST[...]
+    pattern-sinks:
+      - pattern: exec(...)
+      - pattern: shell_exec(...)
+      - pattern: system(...)
+      - pattern: passthru(...)
+      - pattern: popen(...)
+      - pattern: proc_open(...)
+    pattern-sanitizers:
+      - pattern: escapeshellarg(...)
+      - pattern: escapeshellcmd(...)
+    message: "Command injection: use escapeshellarg() or avoid shell functions"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  # ============================================================================
+  # CODE INJECTION - PHP
+  # ============================================================================
+
+  - id: php-code-injection-eval
+    name: "PHP Code Injection via eval()"
+    description: "Arbitrary code execution via eval()"
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_REQUEST[...]
+    pattern-sinks:
+      - pattern: eval(...)
+      - pattern: assert(...)
+      - pattern: create_function(...)
+      - pattern: preg_replace(..., /e)
+    message: "Code injection: never use eval() with user input"
+    metadata:
+      cwe: CWE-94
+      owasp: A03:2021-Injection
+      confidence: 1.0
+
+  # ============================================================================
+  # PATH TRAVERSAL - PHP
+  # ============================================================================
+
+  - id: php-path-traversal
+    name: "PHP Path Traversal"
+    description: "Path traversal in file operations"
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_FILES[...]
+    pattern-sinks:
+      - pattern: file_get_contents(...)
+      - pattern: file_put_contents(...)
+      - pattern: fopen(...)
+      - pattern: include(...)
+      - pattern: require(...)
+      - pattern: include_once(...)
+      - pattern: require_once(...)
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: realpath(...)
+    message: "Path traversal: use basename() to sanitize file paths"
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9
+
+  # ============================================================================
+  # FILE UPLOAD - PHP
+  # ============================================================================
+
+  - id: php-unsafe-file-upload
+    name: "Unsafe File Upload"
+    description: "Unrestricted file upload vulnerability"
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_FILES[...]
+    pattern-sinks:
+      - pattern: move_uploaded_file(...)
+      - pattern: copy(...)
+    pattern-sanitizers:
+      - pattern: pathinfo(..., PATHINFO_EXTENSION)
+      - pattern: mime_content_type(...)
+    message: "File upload: validate file type and extension"
+    metadata:
+      cwe: CWE-434
+      owasp: A04:2021-Insecure Design
+      confidence: 0.85
+
+  # ============================================================================
+  # XSS - PHP
+  # ============================================================================
+
+  - id: php-xss-reflected
+    name: "Reflected XSS in PHP"
+    description: "Reflected XSS via echo/print"
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_REQUEST[...]
+    pattern-sinks:
+      - pattern: echo ...
+      - pattern: print ...
+      - pattern: printf(...)
+    pattern-sanitizers:
+      - pattern: htmlspecialchars(...)
+      - pattern: htmlentities(...)
+    message: "XSS: use htmlspecialchars() before echoing user input"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # SSRF - PHP
+  # ============================================================================
+
+  - id: php-ssrf
+    name: "SSRF in PHP"
+    description: "Server-Side Request Forgery"
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+    pattern-sinks:
+      - pattern: file_get_contents(...)
+      - pattern: curl_exec(...)
+      - pattern: fopen(...)
+    pattern-sanitizers:
+      - pattern: filter_var(..., FILTER_VALIDATE_URL)
+    message: "SSRF: validate and whitelist URLs"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  # ============================================================================
+  # DESERIALIZATION - PHP
+  # ============================================================================
+
+  - id: php-unsafe-unserialize
+    name: "Unsafe PHP Deserialization"
+    description: "Object injection via unserialize()"
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_COOKIE[...]
+    pattern-sinks:
+      - pattern: unserialize(...)
+    message: "Unsafe deserialization: never unserialize untrusted data"
+    metadata:
+      cwe: CWE-502
+      owasp: A08:2021-Software and Data Integrity Failures
+      confidence: 1.0

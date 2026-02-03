@@ -1,0 +1,258 @@
+rules:
+
+  # =========================================================
+  # A01: Broken Access Control
+  # =========================================================
+  - id: php-missing-auth-check
+    severity: HIGH
+    languages: [php]
+    pattern: |
+      function $FUNC(...) {
+        ...
+      }
+    message: "Function or endpoint without visible authentication or authorization checks."
+    metadata:
+      cwe: CWE-284
+      owasp: A01:2021-Broken Access Control
+
+
+  # =========================================================
+  # A02: Cryptographic Failures
+  # =========================================================
+  - id: php-weak-hash-md5
+    severity: HIGH
+    languages: [php]
+    pattern: md5(...)
+    message: "MD5 is cryptographically broken. Use password_hash() or hash('sha256')."
+    metadata:
+      cwe: CWE-327
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: php-weak-hash-sha1
+    severity: HIGH
+    languages: [php]
+    pattern: sha1(...)
+    message: "SHA-1 is cryptographically broken."
+    metadata:
+      cwe: CWE-327
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: php-hardcoded-secret
+    severity: CRITICAL
+    languages: [php]
+    pattern-regex: "(password|secret|api_key|token)\\s*=\\s*['\"][^'\"]+['\"]"
+    message: "Hardcoded secret detected."
+    metadata:
+      cwe: CWE-798
+      owasp: A02:2021-Cryptographic Failures
+
+
+  # =========================================================
+  # A03: Injection (SQL, Command, Code)
+  # =========================================================
+  - id: php-sql-injection
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    source:
+      - $_GET[...]
+      - $_POST[...]
+      - $_REQUEST[...]
+      - $_COOKIE[...]
+    sink:
+      - mysql_query(...)
+      - mysqli_query(...)
+      - $db->query(...)
+    message: "User input reaches SQL query execution without parameterization."
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+
+  - id: php-command-injection
+    severity: CRITICAL
+    languages: [php]
+    pattern-either:
+      - pattern: system(...)
+      - pattern: exec(...)
+      - pattern: shell_exec(...)
+      - pattern: passthru(...)
+    message: "OS command execution detected. Possible command injection."
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+
+  - id: php-code-injection
+    severity: CRITICAL
+    languages: [php]
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: assert(...)
+      - pattern: create_function(...)
+    message: "Dynamic PHP code execution detected."
+    metadata:
+      cwe: CWE-95
+      owasp: A03:2021-Injection
+
+
+  # =========================================================
+  # A04: Insecure Design
+  # =========================================================
+  - id: php-unserialize-user-input
+    severity: CRITICAL
+    languages: [php]
+    pattern: unserialize(...)
+    message: "Unsafe deserialization detected. May lead to PHP object injection."
+    metadata:
+      cwe: CWE-502
+      owasp: A04:2021-Insecure Design
+
+  - id: php-insecure-random
+    severity: MEDIUM
+    languages: [php]
+    pattern-either:
+      - pattern: rand(...)
+      - pattern: mt_rand(...)
+    message: "Non-cryptographic random generator used."
+    metadata:
+      cwe: CWE-338
+      owasp: A04:2021-Insecure Design
+
+
+  # =========================================================
+  # A05: Security Misconfiguration
+  # =========================================================
+  - id: php-display-errors-enabled
+    severity: MEDIUM
+    languages: [php]
+    pattern: ini_set("display_errors", "1")
+    message: "display_errors enabled. Information disclosure risk."
+    metadata:
+      cwe: CWE-209
+      owasp: A05:2021-Security Misconfiguration
+
+  - id: php-allow-url-include
+    severity: HIGH
+    languages: [php]
+    pattern: allow_url_include
+    message: "allow_url_include enabled. Risk of remote file inclusion."
+    metadata:
+      cwe: CWE-98
+      owasp: A05:2021-Security Misconfiguration
+
+
+  # =========================================================
+  # A06: Vulnerable and Outdated Components
+  # =========================================================
+  - id: php-outdated-library
+    severity: MEDIUM
+    languages: [php]
+    pattern-regex: "(jquery|bootstrap)[.-][0-9]+\\.[0-9]+\\.[0-9]+"
+    message: "Outdated client-side library detected."
+    metadata:
+      cwe: CWE-1104
+      owasp: A06:2021-Vulnerable Components
+
+
+  # =========================================================
+  # A07: Identification & Authentication Failures
+  # =========================================================
+  - id: php-plaintext-password-compare
+    severity: HIGH
+    languages: [php]
+    pattern: if ($PWD == $INPUT)
+    message: "Plaintext password comparison detected."
+    metadata:
+      cwe: CWE-521
+      owasp: A07:2021-Identification and Authentication Failures
+
+  - id: php-insecure-session
+    severity: HIGH
+    languages: [php]
+    pattern: session_start()
+    message: "Session started without secure cookie flags."
+    metadata:
+      cwe: CWE-614
+      owasp: A07:2021-Identification and Authentication Failures
+
+
+  # =========================================================
+  # A08: Software and Data Integrity Failures
+  # =========================================================
+  - id: php-file-include
+    severity: CRITICAL
+    languages: [php]
+    pattern-either:
+      - pattern: include(...)
+      - pattern: require(...)
+    message: "File inclusion detected. Validate input to prevent LFI/RFI."
+    metadata:
+      cwe: CWE-98
+      owasp: A08:2021-Software and Data Integrity Failures
+
+
+  # =========================================================
+  # A09: Logging and Monitoring Failures
+  # =========================================================
+  - id: php-empty-catch
+    severity: LOW
+    languages: [php]
+    pattern: |
+      try {
+        ...
+      } catch (Exception $e) {
+      }
+    message: "Empty catch block hides errors."
+    metadata:
+      cwe: CWE-391
+      owasp: A09:2021-Logging and Monitoring Failures
+
+
+  # =========================================================
+  # A10: Server-Side Request Forgery (SSRF)
+  # =========================================================
+  - id: php-ssrf
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    source:
+      - $_GET[...]
+      - $_POST[...]
+    sink:
+      - file_get_contents(...)
+      - curl_exec(...)
+      - fopen(...)
+    message: "User input used in outbound request (possible SSRF)."
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-SSRF
+
+
+  # =========================================================
+  # Additional High-Risk PHP Vulnerabilities
+  # =========================================================
+  - id: php-path-traversal
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    source:
+      - $_GET[...]
+    sink:
+      - fopen(...)
+      - file_get_contents(...)
+    message: "User input used in file path (path traversal)."
+    metadata:
+      cwe: CWE-22
+
+  - id: php-xss
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    source:
+      - $_GET[...]
+      - $_POST[...]
+    sink:
+      - echo
+      - print
+    message: "Reflected XSS vulnerability detected."
+    metadata:
+      cwe: CWE-79

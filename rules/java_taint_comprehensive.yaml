@@ -1,0 +1,310 @@
+rules:
+  # ============================================================================
+  # SQL INJECTION - Java/Kotlin
+  # ============================================================================
+  
+  - id: java-sqli-jdbc
+    name: "JDBC SQL Injection"
+    description: "SQL injection via JDBC Statement"
+    severity: CRITICAL
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: request.getHeader(...)
+      - pattern: "@RequestParam $PARAM"
+      - pattern: "@PathVariable $PARAM"
+    pattern-sinks:
+      - pattern: statement.execute(...)
+      - pattern: statement.executeQuery(...)
+      - pattern: statement.executeUpdate(...)
+      - pattern: connection.createStatement().execute(...)
+    pattern-sanitizers:
+      - pattern: Integer.parseInt(...)
+      - pattern: preparedStatement.setString(...)
+    message: "SQL injection: use PreparedStatement instead of Statement"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: java-sqli-jpa
+    name: "JPA SQL Injection"
+    description: "SQL injection in JPA queries"
+    severity: CRITICAL
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: entityManager.createQuery(...)
+      - pattern: entityManager.createNativeQuery(...)
+      - pattern: session.createQuery(...)
+    pattern-sanitizers:
+      - pattern: setParameter(...)
+    message: "SQL injection: use parameterized queries with setParameter()"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: java-sqli-hibernate
+    name: "Hibernate SQL Injection"
+    description: "SQL injection in Hibernate queries"
+    severity: CRITICAL
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: session.createSQLQuery(...)
+      - pattern: session.createQuery(...)
+    pattern-sanitizers:
+      - pattern: setParameter(...)
+    message: "SQL injection: use HQL with named parameters"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # COMMAND INJECTION
+  # ============================================================================
+
+  - id: java-command-injection-runtime
+    name: "Command Injection via Runtime.exec()"
+    description: "Command injection using Runtime.exec()"
+    severity: CRITICAL
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+      - pattern: "@PathVariable $PARAM"
+    pattern-sinks:
+      - pattern: Runtime.getRuntime().exec(...)
+      - pattern: ProcessBuilder.command(...)
+      - pattern: ProcessBuilder.start(...)
+    message: "Command injection: validate input or use ProcessBuilder with array"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  # ============================================================================
+  # LDAP INJECTION
+  # ============================================================================
+
+  - id: java-ldap-injection
+    name: "LDAP Injection"
+    description: "LDAP injection via untrusted input"
+    severity: HIGH
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: dirContext.search(...)
+      - pattern: ldapContext.search(...)
+    pattern-sanitizers:
+      - pattern: LdapEncoder.filterEncode(...)
+    message: "LDAP injection: use LdapEncoder.filterEncode() for user input"
+    metadata:
+      cwe: CWE-90
+      owasp: A03:2021-Injection
+      confidence: 0.9
+
+  # ============================================================================
+  # XPATH INJECTION
+  # ============================================================================
+
+  - id: java-xpath-injection
+    name: "XPath Injection"
+    description: "XPath injection via untrusted input"
+    severity: HIGH
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: xpath.evaluate(...)
+      - pattern: xpath.compile(...)
+    message: "XPath injection: use parameterized XPath queries"
+    metadata:
+      cwe: CWE-643
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # CROSS-SITE SCRIPTING (XSS)
+  # ============================================================================
+
+  - id: java-xss-spring
+    name: "XSS in Spring MVC"
+    description: "XSS via Spring MVC response"
+    severity: HIGH
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: response.getWriter().write(...)
+      - pattern: PrintWriter.write(...)
+      - pattern: model.addAttribute(...)
+    pattern-sanitizers:
+      - pattern: HtmlUtils.htmlEscape(...)
+      - pattern: StringEscapeUtils.escapeHtml4(...)
+    message: "XSS: use HtmlUtils.htmlEscape() before rendering"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  # ============================================================================
+  # SERVER-SIDE REQUEST FORGERY (SSRF)
+  # ============================================================================
+
+  - id: java-ssrf-urlconnection
+    name: "SSRF via URLConnection"
+    description: "Server-Side Request Forgery using URLConnection"
+    severity: HIGH
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: URL(...).openConnection()
+      - pattern: HttpURLConnection.connect()
+      - pattern: RestTemplate.getForObject(...)
+      - pattern: WebClient.get(...)
+    pattern-sanitizers:
+      - pattern: URI.create(...)
+    message: "SSRF: validate and whitelist URLs before making requests"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  # ============================================================================
+  # PATH TRAVERSAL
+  # ============================================================================
+
+  - id: java-path-traversal
+    name: "Path Traversal in File Operations"
+    description: "Path traversal via file system operations"
+    severity: HIGH
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: new File(...)
+      - pattern: new FileInputStream(...)
+      - pattern: new FileOutputStream(...)
+      - pattern: Files.readAllBytes(...)
+      - pattern: Paths.get(...)
+    pattern-sanitizers:
+      - pattern: FilenameUtils.getName(...)
+      - pattern: Paths.get(...).normalize()
+    message: "Path traversal: use FilenameUtils.getName() or normalize paths"
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9
+
+  # ============================================================================
+  # DESERIALIZATION
+  # ============================================================================
+
+  - id: java-unsafe-deserialization
+    name: "Unsafe Java Deserialization"
+    description: "Arbitrary code execution via ObjectInputStream"
+    severity: CRITICAL
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getInputStream()
+      - pattern: request.getReader()
+      - pattern: "@RequestBody byte[]"
+    pattern-sinks:
+      - pattern: ObjectInputStream.readObject()
+      - pattern: XMLDecoder.readObject()
+    message: "Unsafe deserialization: never deserialize untrusted data"
+    metadata:
+      cwe: CWE-502
+      owasp: A08:2021-Software and Data Integrity Failures
+      confidence: 1.0
+
+  # ============================================================================
+  # ANDROID-SPECIFIC VULNERABILITIES
+  # ============================================================================
+
+  - id: android-intent-injection
+    name: "Android Intent Injection"
+    description: "Intent injection via untrusted input"
+    severity: HIGH
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: getIntent().getStringExtra(...)
+      - pattern: getIntent().getExtras()
+    pattern-sinks:
+      - pattern: startActivity(...)
+      - pattern: sendBroadcast(...)
+      - pattern: startService(...)
+    message: "Intent injection: validate intent data before use"
+    metadata:
+      cwe: CWE-927
+      owasp: A08:2021-Software and Data Integrity Failures
+      confidence: 0.85
+
+  - id: android-sql-injection
+    name: "Android SQLite Injection"
+    description: "SQL injection in Android SQLite"
+    severity: CRITICAL
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: getIntent().getStringExtra(...)
+      - pattern: getIntent().getExtras()
+    pattern-sinks:
+      - pattern: db.rawQuery(...)
+      - pattern: db.execSQL(...)
+    pattern-sanitizers:
+      - pattern: db.query(...)
+    message: "SQL injection: use db.query() with selection args"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # OPEN REDIRECT
+  # ============================================================================
+
+  - id: java-open-redirect
+    name: "Open Redirect"
+    description: "Unvalidated redirect to user-controlled URL"
+    severity: MEDIUM
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: request.getParameter(...)
+      - pattern: "@RequestParam $PARAM"
+    pattern-sinks:
+      - pattern: response.sendRedirect(...)
+      - pattern: ModelAndView("redirect:...")
+    pattern-sanitizers:
+      - pattern: isValidUrl(...)
+    message: "Open redirect: validate redirect URLs against whitelist"
+    metadata:
+      cwe: CWE-601
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.8

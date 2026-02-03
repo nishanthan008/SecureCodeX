@@ -1,0 +1,396 @@
+rules:
+  # ============================================================================
+  # SQL/NOSQL INJECTION - JavaScript/TypeScript
+  # ============================================================================
+  
+  - id: javascript-sqli-mysql
+    name: "MySQL SQL Injection (Node.js)"
+    description: "SQL injection in MySQL queries"
+    severity: CRITICAL
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+      - pattern: req.headers.$PARAM
+    pattern-sinks:
+      - pattern: connection.query(...)
+      - pattern: db.query(...)
+      - pattern: pool.query(...)
+      - pattern: mysql.query(...)
+    pattern-sanitizers:
+      - pattern: parseInt(...)
+      - pattern: Number(...)
+      - pattern: mysql.escape(...)
+    message: "SQL injection: use parameterized queries or mysql.escape()"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: javascript-sqli-postgres
+    name: "PostgreSQL SQL Injection"
+    description: "SQL injection in PostgreSQL queries"
+    severity: CRITICAL
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+    pattern-sinks:
+      - pattern: client.query(...)
+      - pattern: pool.query(...)
+      - pattern: pg.query(...)
+    pattern-sanitizers:
+      - pattern: parseInt(...)
+      - pattern: pg.escapeLiteral(...)
+    message: "SQL injection: use parameterized queries with $1, $2 placeholders"
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  - id: javascript-nosql-mongodb
+    name: "MongoDB NoSQL Injection"
+    description: "NoSQL injection in MongoDB queries"
+    severity: CRITICAL
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+    pattern-sinks:
+      - pattern: collection.find(...)
+      - pattern: collection.findOne(...)
+      - pattern: Model.find(...)
+      - pattern: Model.findOne(...)
+      - pattern: collection.update(...)
+      - pattern: collection.deleteOne(...)
+    pattern-sanitizers:
+      - pattern: ObjectId(...)
+      - pattern: parseInt(...)
+    message: "NoSQL injection: validate input types and use ObjectId()"
+    metadata:
+      cwe: CWE-943
+      owasp: A03:2021-Injection
+      confidence: 0.9
+
+  # ============================================================================
+  # COMMAND INJECTION
+  # ============================================================================
+
+  - id: javascript-command-injection-exec
+    name: "Command Injection via exec()"
+    description: "Command injection using child_process.exec()"
+    severity: CRITICAL
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+    pattern-sinks:
+      - pattern: child_process.exec(...)
+      - pattern: exec(...)
+      - pattern: execSync(...)
+    pattern-sanitizers:
+      - pattern: shellEscape(...)
+      - pattern: escapeShellArg(...)
+    message: "Command injection: use execFile() or spawn() with array arguments"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.98
+
+  - id: javascript-command-injection-spawn
+    name: "Command Injection via spawn()"
+    description: "Command injection using child_process.spawn() with shell"
+    severity: CRITICAL
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+    pattern-sinks:
+      - pattern: "child_process.spawn(..., {shell: true})"
+      - pattern: "spawn(..., {shell: true})"
+    message: "Command injection: avoid shell:true or validate input"
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+      confidence: 0.95
+
+  # ============================================================================
+  # CODE INJECTION
+  # ============================================================================
+
+  - id: javascript-code-injection-eval
+    name: "Code Injection via eval()"
+    description: "Arbitrary code execution via eval()"
+    severity: CRITICAL
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+    pattern-sinks:
+      - pattern: eval(...)
+      - pattern: Function(...)
+      - pattern: vm.runInContext(...)
+      - pattern: vm.runInNewContext(...)
+    message: "Code injection: never use eval() with user input"
+    metadata:
+      cwe: CWE-94
+      owasp: A03:2021-Injection
+      confidence: 1.0
+
+  # ============================================================================
+  # CROSS-SITE SCRIPTING (XSS)
+  # ============================================================================
+
+  - id: javascript-xss-reflected
+    name: "Reflected XSS in Express"
+    description: "Reflected XSS via Express response"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.params.$PARAM
+      - pattern: req.headers.$PARAM
+    pattern-sinks:
+      - pattern: res.send(...)
+      - pattern: res.write(...)
+      - pattern: res.end(...)
+    pattern-sanitizers:
+      - pattern: escapeHtml(...)
+      - pattern: sanitizeHtml(...)
+      - pattern: DOMPurify.sanitize(...)
+    message: "Reflected XSS: sanitize user input before sending in response"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.85
+
+  - id: javascript-xss-dom
+    name: "DOM-based XSS"
+    description: "DOM-based XSS via innerHTML"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: window.location.search
+      - pattern: window.location.hash
+      - pattern: document.URL
+      - pattern: document.referrer
+    pattern-sinks:
+      - pattern: element.innerHTML = ...
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+      - pattern: eval(...)
+    pattern-sanitizers:
+      - pattern: DOMPurify.sanitize(...)
+      - pattern: textContent = ...
+    message: "DOM XSS: use textContent or DOMPurify.sanitize()"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.9
+
+  - id: javascript-xss-react
+    name: "React XSS via dangerouslySetInnerHTML"
+    description: "XSS in React components"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: props.$PARAM
+      - pattern: this.props.$PARAM
+      - pattern: this.state.$PARAM
+    pattern-sinks:
+      - pattern: "dangerouslySetInnerHTML={{__html: ...}}"
+    pattern-sanitizers:
+      - pattern: DOMPurify.sanitize(...)
+    message: "React XSS: sanitize content before using dangerouslySetInnerHTML"
+    metadata:
+      cwe: CWE-79
+      owasp: A03:2021-Injection
+      confidence: 0.9
+
+  # ============================================================================
+  # SERVER-SIDE REQUEST FORGERY (SSRF)
+  # ============================================================================
+
+  - id: javascript-ssrf-axios
+    name: "SSRF via Axios"
+    description: "Server-Side Request Forgery using Axios"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+    pattern-sinks:
+      - pattern: axios.get(...)
+      - pattern: axios.post(...)
+      - pattern: axios.request(...)
+      - pattern: axios(...)
+    pattern-sanitizers:
+      - pattern: URL.parse(...)
+      - pattern: isValidUrl(...)
+    message: "SSRF: validate and whitelist URLs before making requests"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  - id: javascript-ssrf-fetch
+    name: "SSRF via fetch()"
+    description: "Server-Side Request Forgery using fetch API"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+    pattern-sinks:
+      - pattern: fetch(...)
+      - pattern: node-fetch(...)
+    pattern-sanitizers:
+      - pattern: new URL(...)
+    message: "SSRF: validate URLs against whitelist before fetching"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  - id: javascript-ssrf-http
+    name: "SSRF via http module"
+    description: "SSRF using Node.js http/https modules"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+    pattern-sinks:
+      - pattern: http.get(...)
+      - pattern: http.request(...)
+      - pattern: https.get(...)
+      - pattern: https.request(...)
+    message: "SSRF: validate destination URLs"
+    metadata:
+      cwe: CWE-918
+      owasp: A10:2021-Server-Side Request Forgery
+      confidence: 0.9
+
+  # ============================================================================
+  # OPEN REDIRECT
+  # ============================================================================
+
+  - id: javascript-open-redirect
+    name: "Open Redirect"
+    description: "Unvalidated redirect to user-controlled URL"
+    severity: MEDIUM
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+    pattern-sinks:
+      - pattern: res.redirect(...)
+      - pattern: res.location(...)
+      - pattern: window.location = ...
+      - pattern: window.location.href = ...
+    pattern-sanitizers:
+      - pattern: isValidRedirect(...)
+      - pattern: isSafeUrl(...)
+    message: "Open redirect: validate redirect URLs against whitelist"
+    metadata:
+      cwe: CWE-601
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.8
+
+  # ============================================================================
+  # PATH TRAVERSAL
+  # ============================================================================
+
+  - id: javascript-path-traversal
+    name: "Path Traversal in File Operations"
+    description: "Path traversal via file system operations"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+      - pattern: req.params.$PARAM
+    pattern-sinks:
+      - pattern: fs.readFile(...)
+      - pattern: fs.readFileSync(...)
+      - pattern: fs.writeFile(...)
+      - pattern: fs.writeFileSync(...)
+      - pattern: fs.createReadStream(...)
+      - pattern: path.join(...)
+    pattern-sanitizers:
+      - pattern: path.basename(...)
+      - pattern: path.normalize(...)
+    message: "Path traversal: use path.basename() to sanitize filenames"
+    metadata:
+      cwe: CWE-22
+      owasp: A01:2021-Broken Access Control
+      confidence: 0.9
+
+  # ============================================================================
+  # PROTOTYPE POLLUTION
+  # ============================================================================
+
+  - id: javascript-prototype-pollution
+    name: "Prototype Pollution"
+    description: "Prototype pollution via object merge"
+    severity: HIGH
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.body
+      - pattern: req.query
+      - pattern: JSON.parse(...)
+    pattern-sinks:
+      - pattern: Object.assign(...)
+      - pattern: _.merge(...)
+      - pattern: _.extend(...)
+      - pattern: $.extend(...)
+    message: "Prototype pollution: validate object keys before merging"
+    metadata:
+      cwe: CWE-1321
+      owasp: A08:2021-Software and Data Integrity Failures
+      confidence: 0.85
+
+  # ============================================================================
+  # REGEX DENIAL OF SERVICE (ReDoS)
+  # ============================================================================
+
+  - id: javascript-redos
+    name: "Regular Expression Denial of Service"
+    description: "ReDoS via user-controlled regex"
+    severity: MEDIUM
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - pattern: req.query.$PARAM
+      - pattern: req.body.$PARAM
+    pattern-sinks:
+      - pattern: new RegExp(...)
+      - pattern: RegExp(...)
+      - pattern: str.match(...)
+      - pattern: str.search(...)
+    message: "ReDoS: avoid user-controlled regular expressions"
+    metadata:
+      cwe: CWE-1333
+      owasp: A06:2021-Vulnerable and Outdated Components
+      confidence: 0.75
