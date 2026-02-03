@@ -43,53 +43,119 @@ cd /path/to/SecureCodeX
 pip install -e .
 ```
 
+
+## 🚀 Quick Start
+
+```bash
+# Security scan (code vulnerabilities)
+python -m securecodex.cli scan --path . --languages python
+
+# SBOM generation (dependencies)
+python -m securecodex.cli sbom --path .
+
+# Create custom rules
+python -m securecodex.add_rule --language python --type taint
+```
+
+**[📖 Full Quick Start Guide](docs/QUICK_START.md)**
+
+---
+
 ## Usage
 
-### Basic Scan
-Scan the current directory:
+### Security Scan
+Scan your code for security vulnerabilities:
 ```bash
-securecodex scan
+# Basic scan
+python -m securecodex.cli scan --path .
+
+# Scan specific languages (80% faster)
+python -m securecodex.cli scan --path . --languages python,javascript
+
+# Generate JSON report for CI/CD
+python -m securecodex.cli scan --path . --format json --output ./reports
+```
+
+**[📖 Complete Scan Documentation](docs/SCAN_DOCUMENTATION.md)**
+
+### SBOM Generation
+Generate Software Bill of Materials for supply chain security:
+```bash
+# Generate SBOM
+python -m securecodex.cli sbom --path .
+
+# Specify output directory
+python -m securecodex.cli sbom --path . --output ./sbom-reports
+```
+
+**[📖 Complete SBOM Documentation](docs/SBOM_DOCUMENTATION.md)**
+
+### Create Custom Rules
+Generate custom security rule templates:
+```bash
+# List supported languages
+python -m securecodex.add_rule --list-languages
+
+# Generate rule template
+python -m securecodex.add_rule --language python --type taint --output my_rule.yaml
+
+# Show examples
+python -m securecodex.add_rule --show-example python-sqli
 ```
 
 ### Synchronize Rules
-Update local security rules from external repositories (e.g. Semgrep Community Rules):
+Update local security rules from external repositories:
 ```bash
-securecodex sync
+python -m securecodex.cli sync --rules-dir rules
 ```
 
-### Advanced Scan Options
-```bash
-# Scan specific directory
-securecodex scan --path /path/to/source/code
+---
 
-# Specify output location and format
-securecodex scan --path ./myproject --output ./reports --format both
+## Command Reference
 
-# Persistent Scan (Keep DB for incremental speedups)
-securecodex scan --path ./myproject --keep-db
+### `scan` - Security Code Analysis
 ```
-
-## Command-Line Options
-
-### `scan` command
-```
-securecodex scan [OPTIONS]
+python -m securecodex.cli scan [OPTIONS]
 
 Options:
-  --path PATH           Path to scan (directory or file). Default: current directory
-  --output PATH         Output directory for reports. Default: current directory
-  --project-name NAME   Project name for the report. Default: directory name
-  --format FORMAT       Output format: pdf, json, or both. Default: pdf
-  --verbose            Enable verbose output
-  --keep-db            Keep the SQLite database after scan
+  --path PATH              Path to scan (required)
+  --languages LANGS        Comma-separated languages (e.g., python,javascript)
+  --output PATH            Output directory. Default: current directory
+  --project-name NAME      Project name for report. Default: directory name
+  --format FORMAT          Report format: pdf, json, or both. Default: pdf
+  --verbose               Enable verbose output
+  --keep-db               Keep SQLite database after scan
 ```
 
-### `sync` command
+### `sbom` - SBOM Generation
 ```
-securecodex sync [OPTIONS]
+python -m securecodex.cli sbom [OPTIONS]
 
 Options:
-  --rules-dir PATH      Local directory to store rules. Default: rules
+  --path PATH              Path to project (required)
+  --output PATH            Output directory. Default: current directory
+  --format FORMAT          SBOM format: json, cyclonedx, spdx. Default: json
+  --verbose               Enable verbose output
+```
+
+### `add-rule` - Custom Rule Generator
+```
+python -m securecodex.add_rule [OPTIONS]
+
+Options:
+  --list-languages         List all supported languages
+  --language LANG          Target language (e.g., python, javascript)
+  --type TYPE              Rule type: taint, pattern, ast. Default: taint
+  --output FILE            Output file path. Default: custom_rule.yaml
+  --show-example EXAMPLE   Show example rule (python-sqli, javascript-xss, etc.)
+```
+
+### `sync` - Rule Synchronization
+```
+python -m securecodex.cli sync [OPTIONS]
+
+Options:
+  --rules-dir PATH         Local directory to store rules. Default: rules
 ```
 
 ## Report Contents
