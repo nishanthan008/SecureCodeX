@@ -5,7 +5,7 @@ import os
 import json
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from tqdm import tqdm
 from . import models
 from .detectors.dependency import DependencyDetector
@@ -80,7 +80,7 @@ class SBOMScanner:
             
             # Update scan status
             scan.status = models.ScanStatus.COMPLETED.value
-            scan.end_time = datetime.now(datetime.UTC)
+            scan.end_time = datetime.now(timezone.utc)
             self.db.commit()
             
             return sbom
@@ -156,7 +156,7 @@ class SBOMScanner:
             'tool': 'SecureCodeX',
             'tool_version': '3.0.0',
             'project': os.path.basename(self.scan_path),
-            'scan_date': datetime.now(datetime.UTC).isoformat(),
+            'scan_date': datetime.now(timezone.utc).isoformat(),
             'scan_path': self.scan_path,
             'summary': {
                 'total_dependencies': len(all_dependencies),

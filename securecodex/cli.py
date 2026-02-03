@@ -7,7 +7,7 @@ Command-line interface for scanning source code for vulnerabilities
 import argparse
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from .database import DatabaseManager
 from .scanner import CLIScanner
 from .report import PDFReportGenerator
@@ -292,7 +292,7 @@ def run_sbom(args):
             project_name=os.path.basename(scan_path),
             scan_path=scan_path,
             status=models.ScanStatus.PENDING.value,
-            start_time=datetime.now(datetime.UTC)
+            start_time=datetime.now(timezone.utc)
         )
         db.add(scan)
         db.commit()
