@@ -76,11 +76,11 @@ class EngineV3:
             
         language = self._detect_language(file_path)
         applicable_rules = self._get_applicable_rules(language)
-        print(f"DEBUG: Found {len(applicable_rules)} applicable rules for language '{language}'")
+        # print(f"DEBUG: Found {len(applicable_rules)} applicable rules for language '{language}'")
         
         # Phase 1: Filter (L0) - Fast regex pre-filter
         filtered_rules = self._pre_filter(content, applicable_rules)
-        print(f"DEBUG: {len(filtered_rules)} rules remain after L0 filter")
+        # print(f"DEBUG: {len(filtered_rules)} rules remain after L0 filter")
         if not filtered_rules:
             return []
 
@@ -254,7 +254,8 @@ class EngineV3:
                             "phase": "fallback-regex"
                         })
                 except Exception as e: # Catch specific exception for better debugging
-                    print(f"DEBUG: Error in fallback regex scan for rule {rule.get('id', 'N/A')} with pattern '{p}': {e}")
+                    # print(f"DEBUG: Error in fallback regex scan for rule {rule.get('id', 'N/A')} with pattern '{p}': {e}")
+                    pass
                     continue
         return findings
 

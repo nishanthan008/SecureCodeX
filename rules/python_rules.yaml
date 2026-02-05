@@ -1,17 +1,188 @@
-
 rules:
-  # 1. Pattern Rule: Dangerous API Usage
-  - id: dangerous-os-system
+
+  # =========================================================
+  # A01: Broken Access Control
+  # =========================================================
+  - id: python-missing-auth-check
+    severity: HIGH
+    languages: [python]
+    pattern: |
+      @app.route(...)
+      def $FUNC(...):
+        ...
+    message: "Endpoint defined without explicit authentication or authorization checks."
+    metadata:
+      cwe: CWE-284
+      owasp: A01:2021-Broken Access Control
+
+
+  # =========================================================
+  # A02: Cryptographic Failures
+  # =========================================================
+  - id: python-weak-hash-md5
+    severity: MEDIUM
+    languages: [python]
+    pattern: hashlib.md5(...)
+    message: "MD5 is cryptographically weak."
+    metadata:
+      cwe: CWE-327
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: python-weak-hash-sha1
+    severity: MEDIUM
+    languages: [python]
+    pattern: hashlib.sha1(...)
+    message: "SHA-1 is cryptographically weak."
+    metadata:
+      cwe: CWE-327
+      owasp: A02:2021-Cryptographic Failures
+
+  - id: python-hardcoded-secret
+    severity: HIGH
+    languages: [python]
+    pattern-regex: "(secret|password|token|api_key)\\s*=\\s*['\"][^'\"]+['\"]"
+    message: "Hardcoded secret detected."
+    metadata:
+      cwe: CWE-798
+      owasp: A02:2021-Cryptographic Failures
+
+
+  # =========================================================
+  # A03: Injection
+  # =========================================================
+  - id: python-os-command-injection
     severity: HIGH
     languages: [python]
     pattern: os.system(...)
-    message: "Using os.system() is dangerous and can lead to command injection."
+    message: "os.system() may lead to command injection."
     metadata:
       cwe: CWE-78
       owasp: A03:2021-Injection
 
-  # 2. AST Rule: Structural Misuse (Empty Except)
-  - id: empty-except-block
+  - id: python-subprocess-shell
+    severity: HIGH
+    languages: [python]
+    pattern: subprocess.run(..., shell=True)
+    message: "shell=True allows command injection."
+    metadata:
+      cwe: CWE-78
+      owasp: A03:2021-Injection
+
+  - id: python-sql-injection-format
+    severity: HIGH
+    languages: [python]
+    pattern: cursor.execute("..." % ...)
+    message: "SQL query built via string formatting."
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+
+  - id: python-sqli-taint
+    severity: CRITICAL
+    languages: [python]
+    mode: taint
+    source:
+      - input(...)
+      - request.args.get(...)
+      - request.form.get(...)
+    sink:
+      - cursor.execute(...)
+      - db.execute(...)
+    message: "Tainted user input reaches SQL execution."
+    metadata:
+      cwe: CWE-89
+      owasp: A03:2021-Injection
+
+  - id: python-eval-exec
+    severity: CRITICAL
+    languages: [python]
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+    message: "Dynamic code execution detected."
+    metadata:
+      cwe: CWE-95
+      owasp: A03:2021-Injection
+
+
+  # =========================================================
+  # A04: Insecure Design
+  # =========================================================
+  - id: python-tempfile-mktemp
+    severity: MEDIUM
+    languages: [python]
+    pattern: tempfile.mktemp(...)
+    message: "Insecure temporary file creation."
+    metadata:
+      cwe: CWE-377
+      owasp: A04:2021-Insecure Design
+
+
+  # =========================================================
+  # A05: Security Misconfiguration
+  # =========================================================
+  - id: python-debug-enabled
+    severity: MEDIUM
+    languages: [python]
+    pattern: app.run(debug=True)
+    message: "Debug mode enabled in production."
+    metadata:
+      cwe: CWE-489
+      owasp: A05:2021-Security Misconfiguration
+
+  - id: python-open-bind
+    severity: MEDIUM
+    languages: [python]
+    pattern: app.run(host="0.0.0.0")
+    message: "Application bound to all network interfaces."
+    metadata:
+      cwe: CWE-668
+      owasp: A05:2021-Security Misconfiguration
+
+
+  # =========================================================
+  # A06: Vulnerable and Outdated Components
+  # =========================================================
+  - id: python-unsafe-requirements
+    severity: MEDIUM
+    languages: [python]
+    pattern-regex: "(flask|django|requests)==[0-9]+\\.[0-9]+\\.[0-9]+"
+    message: "Pinned dependency version detected. Ensure it is not vulnerable."
+    metadata:
+      cwe: CWE-1104
+      owasp: A06:2021-Vulnerable Components
+
+
+  # =========================================================
+  # A07: Identification & Authentication Failures
+  # =========================================================
+  - id: python-plaintext-password-compare
+    severity: HIGH
+    languages: [python]
+    pattern: "if $PWD == $INPUT:"
+    message: "Plaintext password comparison detected."
+    metadata:
+      cwe: CWE-521
+      owasp: A07:2021-Identification and Authentication Failures
+
+
+  # =========================================================
+  # A08: Software and Data Integrity Failures
+  # =========================================================
+  - id: python-pickle-deserialization
+    severity: CRITICAL
+    languages: [python]
+    pattern: pickle.loads(...)
+    message: "Unsafe deserialization using pickle."
+    metadata:
+      cwe: CWE-502
+      owasp: A08:2021-Software and Data Integrity Failures
+
+
+  # =========================================================
+  # A09: Logging and Monitoring Failures
+  # =========================================================
+  - id: python-bare-except
     severity: LOW
     languages: [python]
     pattern: |
@@ -19,18 +190,53 @@ rules:
         ...
       except:
         pass
-    message: "Empty except: pass block detected. This can hide critical errors."
+    message: "Bare except hides errors and bypasses logging."
     metadata:
       cwe: CWE-391
+      owasp: A09:2021-Logging and Monitoring Failures
 
-  # 3. Taint Rule: Source -> Sink (SQL Injection)
-  - id: python-sqli-taint
-    severity: CRITICAL
+
+  # =========================================================
+  # A10: Server-Side Request Forgery (SSRF)
+  # =========================================================
+  - id: python-ssrf
+    severity: HIGH
     languages: [python]
     mode: taint
-    source: $REQ.params.get(...)
-    sink: db.execute(...)
-    message: "User input from $REQ reaches SQL execution sink without sanitization."
+    source:
+      - request.args.get(...)
+      - input(...)
+    sink:
+      - requests.get(...)
+      - requests.post(...)
+      - urllib.request.urlopen(...)
+    message: "User input used in outbound HTTP request (possible SSRF)."
     metadata:
-      cwe: CWE-89
-      owasp: A03:2021-Injection
+      cwe: CWE-918
+      owasp: A10:2021-SSRF
+
+
+  # =========================================================
+  # Additional High-Value Bugs
+  # =========================================================
+  - id: python-path-traversal
+    severity: HIGH
+    languages: [python]
+    mode: taint
+    source:
+      - request.args.get(...)
+      - input(...)
+    sink:
+      - open(...)
+      - os.open(...)
+    message: "User input used in file path (possible path traversal)."
+    metadata:
+      cwe: CWE-22
+
+  - id: python-insecure-random
+    severity: MEDIUM
+    languages: [python]
+    pattern: random.random()
+    message: "Non-cryptographic random generator used."
+    metadata:
+      cwe: CWE-338
